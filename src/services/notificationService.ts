@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 const NOTIFICATION_ID = 'freesnore-active-tracking';
 const CHANNEL_ID = 'freesnore-tracking';
 
-// Értesítés viselkedése: csendes megjelenítés (ne csipogjon alvás közben!)
+// Silent behavior during sleep (do not beep or vibrate when tracking starts)
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -28,7 +28,7 @@ export async function initNotifications(): Promise<boolean> {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
         name: 'Alvás és horkolás figyelése',
-        importance: Notifications.AndroidImportance.LOW, // Csendes, állandó jellegű
+        importance: Notifications.AndroidImportance.LOW, // Quiet, persistent banner
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         vibrationPattern: null,
         sound: undefined,
@@ -45,7 +45,7 @@ export async function initNotifications(): Promise<boolean> {
 }
 
 /**
- * Megjeleníti a folyamatban lévő figyelés értesítését
+ * Display active tracking banner on lock screen and notification shade
  */
 export async function showTrackingNotification(
   elapsedText: string = '0 perc',
@@ -62,7 +62,7 @@ export async function showTrackingNotification(
         sound: false,
         priority: Notifications.AndroidNotificationPriority.LOW,
       },
-      trigger: null, // Azonnali megjelenítés
+      trigger: null, // Instant presentation
     });
   } catch (error) {
     console.warn('Could not display tracking notification:', error);
@@ -70,13 +70,13 @@ export async function showTrackingNotification(
 }
 
 /**
- * Eltávolítja az értesítést a megfigyelés befejezésekor
+ * Dismiss tracking notification when session finishes or cancels
  */
 export async function dismissTrackingNotification(): Promise<void> {
   try {
     await Notifications.dismissNotificationAsync(NOTIFICATION_ID);
     await Notifications.cancelScheduledNotificationAsync(NOTIFICATION_ID);
-  } catch (error) {
-    // ignore
+  } catch {
+    // Ignore dismissal errors
   }
 }

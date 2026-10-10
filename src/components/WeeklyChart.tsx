@@ -11,15 +11,18 @@ export const WeeklyChart: React.FC<WeeklyChartProps> = ({ sessions }) => {
   // Generate the last 7 days starting from today backwards
   const dayNames = ['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo'];
   const today = new Date();
+  // Local (non-UTC) date key so sessions started near midnight map to the correct local calendar day
+  const localDateKey = (d: Date) =>
+    `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
   const daysData = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
     d.setDate(today.getDate() - (6 - i));
     const dayOfWeek = d.getDay();
-    const dateStr = d.toISOString().split('T')[0];
+    const dateKey = localDateKey(d);
 
     // Find session for this date
-    const session = sessions.find((s) => s.startTime.startsWith(dateStr));
+    const session = sessions.find((s) => localDateKey(new Date(s.startTime)) === dateKey);
 
     return {
       date: d,

@@ -6,21 +6,22 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Modal,
   AppState,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
 import { sleepMonitor, LiveAudioStatus } from '../services/audioService';
 import { calculateSnoreStats } from '../services/scoreCalculator';
-import { saveSession, getSettings } from '../services/storage';
-import { SleepSession } from '../types/session';
+import { saveSession, getSettings, DEFAULT_SETTINGS } from '../services/storage';
+import { AppSettings, SleepSession } from '../types/session';
 import { COLORS, SNORE_LEVELS } from '../constants/theme';
 import { showTrackingNotification, dismissTrackingNotification } from '../services/notificationService';
 
 interface RecordScreenProps {
   onSessionFinished: (session: SleepSession) => void;
+  onTrackingChange?: (active: boolean) => void;
 }
 
 const DELAY_OPTIONS = [0, 5, 10, 15, 20, 30, 45];
@@ -35,14 +36,24 @@ const FACTOR_PRESETS = [
   'Párásító',
 ];
 
-export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished }) => {
+const SENSITIVITY_MIN_DB: Record<AppSettings['sensitivity'], number> = {
+  low: 52,
+  medium: 44,
+  high: 38,
+};
+
+const formatClock = (d: Date) =>
+  `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+
+export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, onTrackingChange }) => {
   // Tracking state: 'idle' | 'countdown' | 'recording'
   const [trackingState, setTrackingState] = useState<'idle' | 'countdown' | 'recording'>('idle');
-  const [selectedDelay, setSelectedDelay] = useState<number>(15);
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [selectedDelay, setSelectedDelay] = useState<number>(DEFAULT_SETTINGS.startDelayMinutes);
   const [countdownRemainingSec, setCountdownRemainingSec] = useState<number>(0);
   const [selectedFactors, setSelectedFactors] = useState<string[]>(['Oldalfekvés']);
   const [nightClockMode, setNightClockMode] = useState<boolean>(false);
-  const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
+  const [currentTimeStr, setCurrentTimeStr] = useState<string>(() => formatClock(new Date()));
 
   const [liveStatus, setLiveStatus] = useState<LiveAudioStatus>({
     currentDb: 30,
@@ -52,28 +63,26 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
     snoringSeconds: 0,
   });
 
-  const countdownTimerRef = useRef<any>(null);
-  const clockTimerRef = useRef<any>(null);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isAppActiveRef = useRef<boolean>(true);
 
   useEffect(() => {
     // Load default delay from settings
     getSettings().then((s) => {
+      setSettings(s);
       setSelectedDelay(s.startDelayMinutes);
     });
 
-    // App state listener: ha a telefon le van zárva (háttér), szüneteltetjük a UI re-rendert
+    // App state listener: pause UI re-render when device is locked/in background
     const sub = AppState.addEventListener('change', (nextState) => {
       isAppActiveRef.current = nextState === 'active';
     });
 
-    // Éjszakai óra ritkított (5 mp-es) frissítése a CPU terhelés minimalizálására
+    // Night clock throttled (5s) update to minimize CPU churn
     clockTimerRef.current = setInterval(() => {
       if (!isAppActiveRef.current) return;
-      const now = new Date();
-      setCurrentTimeStr(
-        `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-      );
+      setCurrentTimeStr(formatClock(new Date()));
     }, 5000);
 
     return () => {
@@ -84,6 +93,21 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
     };
   }, []);
 
+  useEffect(() => {
+    onTrackingChange?.(trackingState !== 'idle');
+    if (trackingState === 'idle') return;
+    // Prevent accidental Android hardware back button exit during active monitoring
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [trackingState, onTrackingChange]);
+
+  const clearCountdownTimer = () => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+  };
+
   const toggleFactor = (factor: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (selectedFactors.includes(factor)) {
@@ -93,70 +117,75 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
     }
   };
 
-  const startCountdownOrRecording = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await activateKeepAwakeAsync();
-
-    if (selectedDelay === 0) {
-      await beginActualRecording();
-    } else {
-      setTrackingState('countdown');
-      setCountdownRemainingSec(selectedDelay * 60);
-      showTrackingNotification(
-        `${selectedDelay} perc múlva indul`,
-        'Elalvási késleltetés aktív'
-      );
-
-      countdownTimerRef.current = setInterval(() => {
-        setCountdownRemainingSec((prev) => {
-          if (prev <= 1) {
-            if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
-            beginActualRecording();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-  };
-
-  const skipCountdown = async () => {
-    if (countdownTimerRef.current) {
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-    await beginActualRecording();
-  };
-
-  const cancelTracking = async () => {
-    if (countdownTimerRef.current) {
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-    await deactivateKeepAwake();
-    await dismissTrackingNotification();
-    setTrackingState('idle');
-  };
-
-  const beginActualRecording = async () => {
+  const enterRecordingState = () => {
+    clearCountdownTimer();
     setTrackingState('recording');
     showTrackingNotification('Alvás figyelése aktív', 'FreeSnore akusztikai felügyelet');
+  };
 
-    const started = await sleepMonitor.startMonitoring((status) => {
-      if (isAppActiveRef.current) {
-        setLiveStatus(status);
+  const startCountdownOrRecording = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (settings.keepAwake) {
+      await activateKeepAwakeAsync();
+    }
+
+    // Microphone starts now (iOS policy disallows background start);
+    // frame evaluation stays idle during countdown delay.
+    const started = await sleepMonitor.startMonitoring(
+      (status) => {
+        if (isAppActiveRef.current) {
+          setLiveStatus(status);
+        }
+      },
+      {
+        delaySeconds: selectedDelay * 60,
+        minSnoreDb: SENSITIVITY_MIN_DB[settings.sensitivity],
+        maxClips: settings.maxClipsPerSession,
+        saveAudio: settings.saveAudioClips,
       }
-    });
+    );
 
     if (!started) {
       Alert.alert(
         'Mikrofon hiba',
         'Nem sikerült hozzáférni a mikrofonhoz. Kérlek engedélyezd a mikrofonhasználatot a beállításokban!'
       );
-      setTrackingState('idle');
-      await deactivateKeepAwake();
-      await dismissTrackingNotification();
+      deactivateKeepAwake();
+      return;
     }
+
+    if (selectedDelay === 0) {
+      enterRecordingState();
+      return;
+    }
+
+    setTrackingState('countdown');
+    showTrackingNotification(`${selectedDelay} perc múlva indul`, 'Elalvási késleltetés aktív');
+
+    // Deadline-based countdown: background timers may throttle, but wall-clock calculation stays exact
+    const tick = () => {
+      const remaining = Math.ceil((sleepMonitor.getMonitorStartTime() - Date.now()) / 1000);
+      if (remaining <= 0) {
+        enterRecordingState();
+      } else {
+        setCountdownRemainingSec(remaining);
+      }
+    };
+    tick();
+    countdownTimerRef.current = setInterval(tick, 1000);
+  };
+
+  const skipCountdown = () => {
+    sleepMonitor.skipDelay();
+    enterRecordingState();
+  };
+
+  const cancelTracking = async () => {
+    clearCountdownTimer();
+    await sleepMonitor.cancelMonitoring();
+    deactivateKeepAwake();
+    await dismissTrackingNotification();
+    setTrackingState('idle');
   };
 
   const stopAndFinishSession = async () => {
@@ -170,23 +199,21 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
           style: 'default',
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            await deactivateKeepAwake();
+            deactivateKeepAwake();
             await dismissTrackingNotification();
             setNightClockMode(false);
 
             const result = await sleepMonitor.stopMonitoring();
             const stats = calculateSnoreStats(result.totalSeconds, result.timeline);
 
-            const now = new Date();
-            const startEpoch = now.getTime() - result.totalSeconds * 1000;
-
             const session: SleepSession = {
               id: `session_${Date.now()}`,
-              startTime: new Date(startEpoch).toISOString(),
-              endTime: now.toISOString(),
+              startTime: new Date(result.startTime).toISOString(),
+              endTime: new Date().toISOString(),
               delayMinutes: selectedDelay,
               totalDurationSeconds: result.totalSeconds,
-              snoreDurationSeconds: stats.snoreDurationSeconds,
+              // Total snoring duration detected (matches live display)
+              snoreDurationSeconds: Math.min(result.snoreSeconds, result.totalSeconds),
               snoreScore: stats.snoreScore,
               quietPercent: stats.quietPercent,
               lightPercent: stats.lightPercent,
@@ -198,7 +225,11 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
               factors: selectedFactors,
             };
 
-            await saveSession(session);
+            try {
+              await saveSession(session);
+            } catch {
+              Alert.alert('Mentési hiba', 'Nem sikerült elmenteni az éjszaka adatait.');
+            }
             setTrackingState('idle');
             onSessionFinished(session);
           },

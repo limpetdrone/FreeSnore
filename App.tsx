@@ -4,6 +4,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  BackHandler,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +22,8 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<'record' | 'history' | 'settings'>('record');
   const [sessions, setSessions] = useState<SleepSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<SleepSession | null>(null);
+  // Cannot switch tabs during active tracking: unmounting RecordScreen would detach the audio pipeline
+  const [isTracking, setIsTracking] = useState(false);
 
   const loadData = async () => {
     const data = await getSessions();
@@ -31,6 +34,16 @@ export default function App() {
     loadData();
     initNotifications();
   }, []);
+
+  // Android hardware back button: navigate back from detail view to history list
+  useEffect(() => {
+    if (!selectedSession) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setSelectedSession(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [selectedSession]);
 
   const handleSessionFinished = (session: SleepSession) => {
     loadData();
@@ -74,7 +87,7 @@ export default function App() {
               }}
             />
           ) : currentTab === 'record' ? (
-            <RecordScreen onSessionFinished={handleSessionFinished} />
+            <RecordScreen onSessionFinished={handleSessionFinished} onTrackingChange={setIsTracking} />
           ) : currentTab === 'history' ? (
             <HistoryScreen
               sessions={sessions}
@@ -86,8 +99,8 @@ export default function App() {
           )}
         </View>
 
-        {/* Bottom Tab Bar (hidden when inspecting session detail) */}
-        {!selectedSession && (
+        {/* Bottom Tab Bar (hidden when inspecting session detail or while tracking) */}
+        {!selectedSession && !isTracking && (
           <View style={styles.bottomTabBar}>
             <TouchableOpacity
               style={styles.tabBtn}

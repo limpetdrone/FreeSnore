@@ -1,4 +1,4 @@
-import { TimelineSample, SnoreIntensity } from '../types/session';
+import { TimelineSample } from '../types/session';
 
 export interface CalculatedStats {
   snoreScore: number;

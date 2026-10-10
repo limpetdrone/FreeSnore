@@ -12,22 +12,28 @@ export interface SnoreEventCandidate {
 /**
  * SnoreClassifier
  *
- * Akusztikai és fizikai szabályokon alapuló horkolás-felismerő szűrő:
- * 1. Adaptív Alapzaj (Running Adaptive Baseline Noise Floor)
- * 2. Időtartam-szűrő (0.8s - 3.5s közötti belégzési fázis, kizárva a rövid koppanásokat és folyamatos zúgásokat)
- * 3. Légzési Periodicitás (2.5s - 6.0s közötti légzési ritmus, emberi nyugalmi légzés ~10-18 légzés/perc)
- * 4. Dinamikai kiemelkedés (legalább +6 dB az alapzaj felett)
+ * Acoustic and physical rule-based snoring classifier:
+ * 1. Running Adaptive Baseline Noise Floor (tracks quiet room level)
+ * 2. Duration Gating (0.7s - 3.8s inspiratory phase, filtering out clicks and constant hums)
+ * 3. Respiratory Periodicity (2.5s - 6.0s rhythm cadence matching human breathing)
+ * 4. Signal-to-Noise Ratio (at least +7 dB above ambient floor)
  */
+const MAX_BURST_MS = 3800;
+const MIN_BURST_MS = 700;
+
 export class SnoreClassifier {
-  // Adaptív szoba-alapzaj szint (dBA)
+  // Adaptive room noise floor (dBA)
   private noiseFloor: number = 32;
 
-  // Aktuális hangkitörés állapota
+  // Absolute minimum threshold (from sensitivity setting)
+  private minThresholdDb: number = 44;
+
+  // Current sound burst state
   private inSoundBurst: boolean = false;
   private burstStartTime: number = 0;
   private burstFrames: number[] = [];
 
-  // Korábbi detektált horkolások időbélyegzői (ritmusvizsgálathoz)
+  // Recent detected snore timestamps (for rhythm / periodicity verification)
   private recentSnoreTimes: number[] = [];
 
   constructor(initialFloor: number = 32) {
@@ -43,34 +49,46 @@ export class SnoreClassifier {
     this.recentSnoreTimes = [];
   }
 
+  setMinThreshold(db: number) {
+    this.minThresholdDb = db;
+  }
+
   /**
-   * Minden bejövő hangkeret feldolgozása (pl. 250-350 ms-onként)
-   * @param currentDb aktuális mért dB érték
-   * @param timestampMs aktuális időbélyegző ms-ben
+   * Process every incoming audio meter frame (e.g. every 250 ms)
+   * @param currentDb Current measured decibel level
+   * @param timestampMs Current timestamp in ms
    */
   processFrame(currentDb: number, timestampMs: number = Date.now()): SnoreEventCandidate | null {
-    // 1. Adaptív alapzaj frissítése (lassú követés: ha csend van, finoman le- vagy felfelé korrigál)
-    if (!this.inSoundBurst && currentDb < 45) {
+    // 1. Adaptive noise floor update (slow tracking when quiet)
+    if (!this.inSoundBurst) {
       this.noiseFloor = this.noiseFloor * 0.95 + currentDb * 0.05;
     }
 
-    // A hangnak érezhetően az alapzaj felett kell lennie (min +7 dB)
-    const threshold = Math.max(40, this.noiseFloor + 7);
+    // Audio must noticeably exceed the ambient baseline (min +7 dB)
+    const threshold = Math.max(this.minThresholdDb, this.noiseFloor + 7);
     const isAboveThreshold = currentDb >= threshold;
 
     if (isAboveThreshold) {
       if (!this.inSoundBurst) {
-        // Új hangkitörés kezdődik
+        // New sound burst starts
         this.inSoundBurst = true;
         this.burstStartTime = timestampMs;
         this.burstFrames = [currentDb];
       } else {
         this.burstFrames.push(currentDb);
+        // Excessively long sound: continuous noise (fan, AC, traffic, TV).
+        // Discard burst and elevate floor to avoid infinite burst state.
+        if (timestampMs - this.burstStartTime > MAX_BURST_MS) {
+          this.noiseFloor =
+            this.burstFrames.reduce((a, b) => a + b, 0) / this.burstFrames.length;
+          this.inSoundBurst = false;
+          this.burstFrames = [];
+        }
       }
       return null;
     } else {
       if (this.inSoundBurst) {
-        // Hangkitörés véget ért, kiértékeljük
+        // Sound burst ended, evaluate candidates
         this.inSoundBurst = false;
         const durationMs = timestampMs - this.burstStartTime;
         const result = this.evaluateBurst(this.burstFrames, durationMs, timestampMs);
@@ -84,49 +102,49 @@ export class SnoreClassifier {
   private evaluateBurst(
     frames: number[],
     durationMs: number,
-    endTimeMs: number
+    _endTimeMs: number
   ): SnoreEventCandidate | null {
     if (frames.length === 0) return null;
 
     const peakDb = Math.max(...frames);
     const avgDb = Math.round(frames.reduce((a, b) => a + b, 0) / frames.length);
 
-    // --- 1. SZABÁLY: Időtartam vizsgálat ---
-    // Az emberi horkolás belégzési fázisa tipikusan 0.7 - 3.5 másodperc.
-    // - Ha < 500 ms: valószínűleg köhögés, ágynyikorgás, tárgy koppanása, leütés.
-    // - Ha > 5000 ms: folyamatos zúgás (klíma felpörgése, forgalom, TV).
-    const isDurationValid = durationMs >= 700 && durationMs <= 3800;
+    // --- RULE 1: Duration Gating ---
+    // Human snore inhalation typically lasts 0.7s to 3.5s.
+    // - Under 700 ms: likely a cough, bed squeak, or impulse click.
+    // - Over 3800 ms: continuous ambient noise (fan, traffic, droning AC).
+    const isDurationValid = durationMs >= MIN_BURST_MS && durationMs <= MAX_BURST_MS;
     if (!isDurationValid) {
       return null;
     }
 
-    // --- 2. SZABÁLY: Kiemelkedés az alapzajból ---
+    // --- RULE 2: Elevation above ambient baseline ---
     const snr = peakDb - this.noiseFloor;
     if (snr < 7) {
       return null;
     }
 
-    // --- 3. SZABÁLY: Légzési Periodicitás (Respiratory Cadence) ---
-    // Az emberi légzési ciklus nyugalomban 2.5 és 6.0 másodperc közötti periódusú.
+    // --- RULE 3: Respiratory Periodicity (Cadence) ---
+    // Resting human respiratory rate produces repetitions every 2.5s to 6.0s.
     let isPeriodic = false;
-    let confidence = 0.6; // Alap konfidencia időtartam és SNR alapján
+    let confidence = 0.6; // Baseline confidence from duration + SNR
 
     if (this.recentSnoreTimes.length > 0) {
       const lastSnoreTime = this.recentSnoreTimes[this.recentSnoreTimes.length - 1];
       const deltaSec = (this.burstStartTime - lastSnoreTime) / 1000;
 
-      // Ha az előző horkolástól eltelt idő 2.2s és 6.5s között van:
+      // If time since previous snore burst matches respiratory rate (2.2s - 6.5s)
       if (deltaSec >= 2.2 && deltaSec <= 6.5) {
         isPeriodic = true;
-        confidence = 0.95; // Nagyon magas bizonyosság!
+        confidence = 0.95; // High confidence periodic match
       } else if (deltaSec > 6.5 && deltaSec <= 13.0) {
-        // Esetleg egy ciklus kimaradt, de még mindig ritmikus
+        // Skipped one respiratory cycle, still rhythmic
         isPeriodic = true;
         confidence = 0.8;
       }
     }
 
-    // Elmentjük az időbélyegzőt az utolsó 5 esemény nyilvántartásába
+    // Keep history of last 5 snore event timestamps
     this.recentSnoreTimes.push(this.burstStartTime);
     if (this.recentSnoreTimes.length > 5) {
       this.recentSnoreTimes.shift();

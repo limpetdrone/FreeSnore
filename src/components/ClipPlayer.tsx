@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SnoreClip } from '../types/session';
 import { sleepMonitor } from '../services/audioService';
@@ -13,38 +13,44 @@ interface ClipPlayerProps {
 export const ClipPlayer: React.FC<ClipPlayerProps> = ({ clip, onPlayingChange }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const isPlayingRef = useRef(false);
 
   useEffect(() => {
     return () => {
-      if (isPlaying) {
+      if (isPlayingRef.current) {
         sleepMonitor.stopPlayback();
       }
     };
-  }, [isPlaying]);
+  }, []);
+
+  const handlePlaybackEnd = () => {
+    isPlayingRef.current = false;
+    setIsPlaying(false);
+    onPlayingChange?.(false);
+  };
 
   const handleTogglePlay = async () => {
     if (isPlaying) {
-      await sleepMonitor.stopPlayback();
-      setIsPlaying(false);
-      onPlayingChange?.(false);
+      sleepMonitor.stopPlayback();
       return;
     }
 
-    if (!clip.audioUri) {
-      alert('Nincs elérhető hangfájl ehhez a részlethez.');
+    if (!clip.audioUri || !clip.audioUri.startsWith('file://')) {
+      Alert.alert('Nincs hangfájl', 'Nincs elérhető hangfájl ehhez a részlethez.');
       return;
     }
 
     setIsLoading(true);
-    const sound = await sleepMonitor.playClip(clip.audioUri, (status) => {
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        onPlayingChange?.(false);
-      }
-    });
-
+    const started = await sleepMonitor.playClip(
+      clip.audioUri,
+      clip.offsetSeconds,
+      clip.durationSeconds,
+      handlePlaybackEnd
+    );
     setIsLoading(false);
-    if (sound) {
+
+    if (started) {
+      isPlayingRef.current = true;
       setIsPlaying(true);
       onPlayingChange?.(true);
     }

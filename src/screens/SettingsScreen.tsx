@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getSettings, saveSettings, DEFAULT_SETTINGS } from '../services/storage';
@@ -26,7 +25,7 @@ export const SettingsScreen: React.FC = () => {
     saveSettings(updated);
   };
 
-  const delayPresets = [0, 5, 10, 15, 20, 30];
+  const delayPresets = [0, 5, 10, 15, 20, 30, 45];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>

@@ -13,7 +13,9 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "A FreeSnore a mikrofont használja a horkolás alvás közbeni érzékeléséhez és elemzéséhez.",
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -33,9 +35,11 @@
     },
     "plugins": [
       [
-        "expo-av",
+        "expo-audio",
         {
-          "microphonePermission": "A FreeSnore a mikrofont használja a horkolás alvás közbeni érzékeléséhez és elemzéséhez."
+          "microphonePermission": "A FreeSnore a mikrofont használja a horkolás alvás közbeni érzékeléséhez és elemzéséhez.",
+          "enableBackgroundRecording": true,
+          "enableBackgroundPlayback": false
         }
       ],
       [
@@ -44,7 +48,9 @@
           "color": "#6366F1",
           "defaultChannel": "freesnore-tracking"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

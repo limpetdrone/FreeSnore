@@ -3,7 +3,7 @@ export type SnoreIntensity = 'quiet' | 'light' | 'loud' | 'epic';
 export interface SnoreClip {
   id: string;
   timestamp: string; // ISO string
-  offsetSeconds: number; // Seconds since session started
+  offsetSeconds: number; // Position of the clip inside the night's audio file (seconds)
   durationSeconds: number;
   peakDb: number;
   avgDb: number;

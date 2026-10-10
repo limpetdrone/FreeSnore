@@ -18,7 +18,9 @@ export async function getSessions(): Promise<SleepSession[]> {
   try {
     const raw = await AsyncStorage.getItem(SESSIONS_STORAGE_KEY);
     if (!raw) {
-      // First run: seed with realistic demo data so the user can immediately test charts and history
+      // In development builds, seed with realistic mock data for charts & trends inspection.
+      // In production, start empty so real nights are not polluted.
+      if (!__DEV__) return [];
       const initial = createMockSessions();
       await AsyncStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(initial));
       return initial;
@@ -72,7 +74,7 @@ export async function getSettings(): Promise<AppSettings> {
     const raw = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch (error) {
+  } catch {
     return DEFAULT_SETTINGS;
   }
 }

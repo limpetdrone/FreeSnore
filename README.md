@@ -37,7 +37,7 @@ A **FreeSnore** egy nyílt forráskódú, modern horkolásfigyelő és alvásele
 
 - **Framework**: React Native + Expo (SDK 57)
 - **Nyelv**: TypeScript
-- **Hangkezelés & Mérés**: `expo-av`, `expo-file-system`
+- **Hangkezelés & Mérés**: `expo-audio`, `expo-file-system`
 - **Adattárolás**: `@react-native-async-storage/async-storage`
 - **UI & Ikonok**: `react-native-svg`, `@expo/vector-icons`, `expo-haptics`
 
