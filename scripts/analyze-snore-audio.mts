@@ -14,10 +14,11 @@
  *   --fan <db>          Mix in steady brown noise at this level (app dB), like a fan or AC.
  *   --sensitivity <s>   low | medium | high (default medium), same thresholds as the app.
  *   --envelope          Print the loudness envelope, one line per second.
+ *   --batch <dir>       Analyze every audio file in a folder separately and print a table.
  *   --demo              Run the built-in scenarios on scripts/audio-fixtures.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -243,6 +244,27 @@ function runDemo() {
   );
 }
 
+function runBatch(dir: string, raw: boolean, fan: number | null, sensitivity: Sensitivity) {
+  const files = readdirSync(dir)
+    .filter((f) => /\.(mp3|m4a|wav|ogg|aiff?|flac)$/i.test(f))
+    .sort();
+  console.log('file                                   length  snores  per min  snoring');
+  let totalSeconds = 0;
+  let totalEvents = 0;
+  for (const f of files) {
+    let samples = decode(join(dir, f));
+    if (!raw) samples = normalize(samples, 62);
+    if (fan !== null) samples = addFan(samples, fan);
+    const a = analyze(samples, sensitivity);
+    totalSeconds += a.seconds;
+    totalEvents += a.events.length;
+    console.log(
+      `${f.padEnd(38).slice(0, 38)} ${a.seconds.toFixed(0).padStart(5)} s ${String(a.events.length).padStart(7)} ${(a.events.length / (a.seconds / 60)).toFixed(1).padStart(8)} ${String(Math.round((a.snoreSeconds / a.seconds) * 100)).padStart(7)}%`
+    );
+  }
+  console.log(`\n${files.length} files, ${(totalSeconds / 60).toFixed(1)} min, ${totalEvents} snores`);
+}
+
 // --- CLI ---
 const args = process.argv.slice(2);
 if (args.includes('--demo')) {
@@ -252,6 +274,7 @@ if (args.includes('--demo')) {
   let fan: number | null = null;
   let sensitivity: Sensitivity = 'medium';
   let showEnvelope = false;
+  let batchDir: string | null = null;
   const files: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
@@ -259,10 +282,15 @@ if (args.includes('--demo')) {
     else if (a === '--fan') fan = Number(args[++i]);
     else if (a === '--sensitivity') sensitivity = args[++i] as Sensitivity;
     else if (a === '--envelope') showEnvelope = true;
+    else if (a === '--batch') batchDir = args[++i];
     else files.push(a);
   }
+  if (batchDir) {
+    runBatch(batchDir, raw, fan, sensitivity);
+    process.exit(0);
+  }
   if (files.length === 0 || !(sensitivity in SENSITIVITY_MIN_DB)) {
-    console.log('Usage: node scripts/analyze-snore-audio.mts [--raw] [--fan db] [--sensitivity low|medium|high] [--envelope] <file[@peakDb]>...');
+    console.log('Usage: node scripts/analyze-snore-audio.mts [--raw] [--fan db] [--sensitivity low|medium|high] [--envelope] <file[@peakDb]>... | --batch <dir> | --demo');
     process.exit(1);
   }
   const parts = files.map((spec) => {

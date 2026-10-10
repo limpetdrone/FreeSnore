@@ -26,6 +26,7 @@ export interface MonitoringOptions {
   minSnoreDb: number; // Sensitivity: absolute minimum threshold
   maxClips: number;
   saveAudio: boolean;
+  keepFullRecording?: boolean; // Keep the audio file even if no snoring was detected
 }
 
 export interface MonitoringResult {
@@ -334,7 +335,8 @@ export class SleepMonitorService {
     const startTime = Math.min(this.monitorStartTime, now);
     const totalSeconds = Math.max(1, Math.floor((now - startTime) / 1000));
 
-    const keepAudio = this.options.saveAudio && this.snoringMs > 0;
+    const keepAudio =
+      this.options.saveAudio && (this.snoringMs > 0 || !!this.options.keepFullRecording);
     const finalUri = await this.releaseRecorder(!keepAudio);
 
     const timeline = buildTimeline(this.minuteBuckets, startTime, !!finalUri);

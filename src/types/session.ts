@@ -48,5 +48,6 @@ export interface AppSettings {
   keepAwake: boolean;
   saveAudioClips: boolean;
   maxClipsPerSession: number;
+  keepFullRecording?: boolean; // Keep the night's audio even without detected snoring (for testing)
   language?: 'hu' | 'en'; // Unset: follow the device locale
 }

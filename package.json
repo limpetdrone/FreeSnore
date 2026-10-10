@@ -39,7 +39,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "analyze-audio": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/analyze-snore-audio.mts"
+    "analyze-audio": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/analyze-snore-audio.mts",
+    "fetch-snore-audio": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fetch-snore-audio.mts"
   },
   "private": true,
   "jest": {

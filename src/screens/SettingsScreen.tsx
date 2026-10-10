@@ -158,6 +158,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
             trackColor={{ false: COLORS.surfaceHighlight, true: COLORS.primary }}
           />
         </View>
+
+        <View style={[styles.switchRow, { borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12, marginTop: 12 }]}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={styles.switchLabel}>{t('keepFullRecordingTitle')}</Text>
+            <Text style={styles.switchDesc}>{t('keepFullRecordingDesc')}</Text>
+          </View>
+          <Switch
+            value={settings.saveAudioClips && !!settings.keepFullRecording}
+            disabled={!settings.saveAudioClips}
+            onValueChange={(val) => updateSetting('keepFullRecording', val)}
+            trackColor={{ false: COLORS.surfaceHighlight, true: COLORS.primary }}
+          />
+        </View>
       </View>
 
       {/* About & TestFlight Info */}

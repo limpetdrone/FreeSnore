@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keepAwake: Platform.OS === 'android',
   saveAudioClips: true,
   maxClipsPerSession: 15,
+  keepFullRecording: false,
 };
 
 export async function getSessions(): Promise<SleepSession[]> {

@@ -9,6 +9,18 @@ without a phone. All files are public domain (CC0); the Freesound files are the 
 | `snore-freesound-114609.mp3` | [snoring by Daxter31](https://freesound.org/people/Daxter31/sounds/114609/) | 47 s | CC0 |
 | `snore-bigsoundbank-0170.mp3` | [Man Snoring (BigSoundBank #0170)](https://bigsoundbank.com/man-snoring-s0170.html) | 50 s | CC0 |
 
+## More recordings (not stored in git)
+
+`freesound-snoring.tsv` lists 24 more snoring recordings: the full-length Freesound sources behind the
+"snoring" class of the [ESC-50 dataset](https://github.com/karolpiczak/ESC-50) (whose clips are only
+5 s long). Only CC0 and CC-BY sources are listed; CC-BY needs credit to the author when the audio is
+redistributed or used for training. One of them (124958) is a 70-minute snoring night.
+
+```bash
+npm run fetch-snore-audio                                   # ~150 MB into downloads/ (git-ignored)
+npm run analyze-audio -- --batch scripts/audio-fixtures/downloads
+```
+
 Speech, fan noise and knocks for the demo scenarios are generated at runtime (macOS `say`, brown noise,
 synthetic impacts), so they are not stored here.
 

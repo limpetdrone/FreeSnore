@@ -209,6 +209,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         minSnoreDb: SENSITIVITY_MIN_DB[settings.sensitivity],
         maxClips: settings.maxClipsPerSession,
         saveAudio: settings.saveAudioClips,
+        keepFullRecording: settings.keepFullRecording,
       }
     );
 

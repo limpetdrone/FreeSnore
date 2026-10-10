@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Downloaded test audio (npm run fetch-snore-audio)
+scripts/audio-fixtures/downloads/

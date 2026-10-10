@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SleepSession } from '../types/session';
@@ -17,6 +18,7 @@ import { deleteSession } from '../services/storage';
 import { createPdfReportFile, sharePdfReportFile } from '../services/pdfReportGenerator';
 import { PdfPreviewModal } from '../components/PdfPreviewModal';
 import { summarizeNight } from '../services/nightSummary';
+import { exportNightRecording, nightRecordingSize } from '../services/recordingExport';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
 interface SessionDetailScreenProps {
@@ -34,6 +36,25 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
 }) => {
   const summary = useMemo(() => summarizeNight(session, history), [session, history]);
   const [timelineFocus, setTimelineFocus] = useState<{ minute: number } | undefined>();
+  const [recordingBytes, setRecordingBytes] = useState<number | null>(null);
+  const [isExportingAudio, setIsExportingAudio] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    nightRecordingSize(session).then((size) => active && setRecordingBytes(size));
+    return () => {
+      active = false;
+    };
+  }, [session]);
+
+  const handleExportRecording = async () => {
+    setIsExportingAudio(true);
+    const result = await exportNightRecording(session);
+    setIsExportingAudio(false);
+    if (result === 'missing') Alert.alert(t('appTitle'), t('exportRecordingMissing'));
+    else if (result === 'unavailable') Alert.alert(t('appTitle'), t('sharingUnavailable'));
+    else if (result === 'error') Alert.alert(t('appTitle'), t('exportRecordingError'));
+  };
   const [activeTab, setActiveTab] = useState<'overview' | 'clips'>('overview');
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
@@ -272,19 +293,43 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
           </>
         ) : (
           /* Audio Clips tab */
-          <View style={styles.card}>
-            <Text style={styles.sectionHeading}>{t('recordedClipsTitle')}</Text>
-            <Text style={styles.hintText}>{t('recordedClipsHint')}</Text>
-
-            {session.clips && session.clips.length > 0 ? (
-              session.clips.map((clip) => <ClipPlayer key={clip.id} clip={clip} />)
-            ) : (
-              <View style={styles.emptyClipsBox}>
-                <Ionicons name="volume-mute-outline" size={40} color={COLORS.textMuted} />
-                <Text style={styles.emptyClipsText}>{t('noClips')}</Text>
-              </View>
+          <>
+            {recordingBytes !== null && (
+              <TouchableOpacity
+                style={styles.card}
+                onPress={handleExportRecording}
+                disabled={isExportingAudio}
+                activeOpacity={0.8}
+              >
+                <View style={styles.exportRow}>
+                  {isExportingAudio ? (
+                    <ActivityIndicator color={COLORS.primaryLight} />
+                  ) : (
+                    <Ionicons name="download-outline" size={22} color={COLORS.primaryLight} />
+                  )}
+                  <View style={styles.exportTextBox}>
+                    <Text style={styles.sectionHeading}>{t('exportRecordingBtn')}</Text>
+                    <Text style={[styles.hintText, { marginBottom: 0 }]}>
+                      {t('exportRecordingDesc', { size: Math.max(1, Math.round(recordingBytes / 1e6)) })}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
             )}
-          </View>
+            <View style={styles.card}>
+              <Text style={styles.sectionHeading}>{t('recordedClipsTitle')}</Text>
+              <Text style={styles.hintText}>{t('recordedClipsHint')}</Text>
+
+              {session.clips && session.clips.length > 0 ? (
+                session.clips.map((clip) => <ClipPlayer key={clip.id} clip={clip} />)
+              ) : (
+                <View style={styles.emptyClipsBox}>
+                  <Ionicons name="volume-mute-outline" size={40} color={COLORS.textMuted} />
+                  <Text style={styles.emptyClipsText}>{t('noClips')}</Text>
+                </View>
+              )}
+            </View>
+          </>
         )}
       </ScrollView>
 
@@ -404,6 +449,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textPrimary,
     marginBottom: 6,
+  },
+  exportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  exportTextBox: {
+    flex: 1,
   },
   summaryText: {
     fontSize: 14,
