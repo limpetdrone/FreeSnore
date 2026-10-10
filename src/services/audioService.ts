@@ -45,6 +45,10 @@ export interface MonitoringResult {
 
 const FRAME_INTERVAL_MS = 250;
 
+// An alarm or call this early (e.g. during the fall-asleep delay) is not the morning:
+// keep the night going instead of saving a few minutes as a finished night
+export const AUTO_STOP_MIN_MONITORING_MS = 30 * 60 * 1000;
+
 // Mono, 22 kHz, 32 kbps AAC: optimal for snore frequencies (<1.5 kHz), low CPU and storage footprint
 const SLEEP_RECORDING_OPTIONS = {
   extension: '.m4a',
@@ -232,13 +236,14 @@ export class SleepMonitorService {
       return true;
     }
 
-    if (this.interruptedAt === null) {
-      // The app may have been suspended right after the interruption: the last tick that
-      // still saw the recorder running is the best estimate of when it happened
-      this.interruptedAt = Math.min(now, this.lastRecordingSeenAt + FRAME_INTERVAL_MS);
-      this.options.onInterrupted?.(this.interruptedAt);
-    }
-    if (this.options.resumeAfterInterruption && now - this.lastResumeAttempt > 5000) {
+    const firstTick = this.interruptedAt === null;
+    // The app may have been suspended right after the interruption: the last tick that
+    // still saw the recorder running is the best estimate of when it happened
+    const interruptedAt = (this.interruptedAt ??= Math.min(now, this.lastRecordingSeenAt + FRAME_INTERVAL_MS));
+    const resume = this.options.resumeAfterInterruption || !this.canAutoStopAt(interruptedAt);
+    if (firstTick && !resume) this.options.onInterrupted?.(interruptedAt);
+
+    if (resume && now - this.lastResumeAttempt > 5000) {
       this.lastResumeAttempt = now;
       try {
         // expo-audio still believes it is recording: pause() syncs its state so record() resumes
@@ -249,6 +254,11 @@ export class SleepMonitorService {
       }
     }
     return false;
+  }
+
+  /** Whether an alarm at `atMs` may end the night (see AUTO_STOP_MIN_MONITORING_MS) */
+  canAutoStopAt(atMs: number): boolean {
+    return this.isRunning && atMs - this.monitorStartTime >= AUTO_STOP_MIN_MONITORING_MS;
   }
 
   private elapsedSeconds(now: number): number {

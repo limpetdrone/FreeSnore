@@ -235,7 +235,9 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
 
     // Android keeps recording through alarms; the native watcher reports them instead
     if (settings.stopOnAlarm !== false) {
-      stopAlarmWatchRef.current = watchAlarms(() => finishSessionRef.current('alarm'));
+      stopAlarmWatchRef.current = watchAlarms((at) => {
+        if (sleepMonitor.canAutoStopAt(at)) finishSessionRef.current('alarm');
+      });
     }
 
     if (selectedDelay === 0) {
