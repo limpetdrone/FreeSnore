@@ -1,6 +1,7 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SnoreIntensity, SnoreClip, TimelineSample } from '../types/session';
+import { snoreClassifier } from './snoreDetector';
 
 export interface LiveAudioStatus {
   currentDb: number;
@@ -64,100 +65,94 @@ export class SleepMonitorService {
       this.detectedClips = [];
       this.currentSnoreStreak = 0;
 
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync({
-        ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-        isMeteringEnabled: true,
-      });
+    snoreClassifier.reset();
 
-      recording.setProgressUpdateInterval(350);
-      recording.setOnRecordingStatusUpdate((status) => {
-        if (!status.isRecording) return;
+    const recording = new Audio.Recording();
+    await recording.prepareToRecordAsync({
+      ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      isMeteringEnabled: true,
+    });
 
-        let db = 32;
-        if (typeof status.metering === 'number' && status.metering > -160) {
-          // Metering is in dBFS (-160 to 0). Calibrate to dBA SPL range (approx 30 - 90 dB)
-          db = Math.max(30, Math.min(95, Math.round(status.metering + 95)));
-        }
+    recording.setProgressUpdateInterval(250);
+    recording.setOnRecordingStatusUpdate((status) => {
+      if (!status.isRecording) return;
 
-        this.processAudioFrame(db);
-      });
-
-      await recording.startAsync();
-      this.recording = recording;
-
-      // 1-second cadence timer for clock & streak aggregation
-      this.intervalTimer = setInterval(() => {
-        if (!this.isRunning) return;
-        this.totalSeconds += 1;
-
-        if (this.currentDb >= 42) {
-          this.snoringSeconds += 1;
-        }
-
-        if (this.onStatusCallback) {
-          this.onStatusCallback({
-            currentDb: this.currentDb,
-            peakDb: this.peakDb,
-            category: this.classifyDb(this.currentDb),
-            durationSeconds: this.totalSeconds,
-            snoringSeconds: this.snoringSeconds,
-          });
-        }
-      }, 1000);
-
-      return true;
-    } catch (error) {
-      console.error('Failed to start sleep monitoring:', error);
-      this.isRunning = false;
-      return false;
-    }
-  }
-
-  private classifyDb(db: number): SnoreIntensity {
-    if (db >= 68) return 'epic';
-    if (db >= 52) return 'loud';
-    if (db >= 40) return 'light';
-    return 'quiet';
-  }
-
-  private processAudioFrame(db: number) {
-    this.currentDb = db;
-    if (db > this.peakDb) {
-      this.peakDb = db;
-    }
-
-    const currentMinute = Math.floor(this.totalSeconds / 60);
-    if (!this.minuteBuckets[currentMinute]) {
-      this.minuteBuckets[currentMinute] = [];
-    }
-    this.minuteBuckets[currentMinute].push(db);
-
-    // Detect snore streak
-    if (db >= 44) {
-      this.currentSnoreStreak += 1;
-      if (db > this.streakPeakDb) this.streakPeakDb = db;
-
-      // If sustained sound >= 3 frames and threshold met, register clip event
-      if (this.currentSnoreStreak === 5 && this.detectedClips.length < 25) {
-        const cat = this.classifyDb(this.streakPeakDb);
-        const clip: SnoreClip = {
-          id: `clip-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          offsetSeconds: this.totalSeconds,
-          durationSeconds: 5,
-          peakDb: this.streakPeakDb,
-          avgDb: Math.round((this.streakPeakDb + db) / 2),
-          category: cat,
-          audioUri: this.recording?.getURI() || '',
-        };
-        this.detectedClips.push(clip);
+      let db = 32;
+      if (typeof status.metering === 'number' && status.metering > -160) {
+        // Metering is in dBFS (-160 to 0). Calibrate to dBA SPL range (approx 30 - 90 dB)
+        db = Math.max(30, Math.min(95, Math.round(status.metering + 95)));
       }
-    } else {
-      this.currentSnoreStreak = 0;
-      this.streakPeakDb = 0;
+
+      this.processAudioFrame(db);
+    });
+
+    await recording.startAsync();
+    this.recording = recording;
+
+    // 1-second cadence timer for clock & streak aggregation
+    this.intervalTimer = setInterval(() => {
+      if (!this.isRunning) return;
+      this.totalSeconds += 1;
+
+      if (this.onStatusCallback) {
+        this.onStatusCallback({
+          currentDb: this.currentDb,
+          peakDb: this.peakDb,
+          category: this.classifyDb(this.currentDb),
+          durationSeconds: this.totalSeconds,
+          snoringSeconds: this.snoringSeconds,
+        });
+      }
+    }, 1000);
+
+    return true;
+  } catch (error) {
+    console.error('Failed to start sleep monitoring:', error);
+    this.isRunning = false;
+    return false;
+  }
+}
+
+private classifyDb(db: number): SnoreIntensity {
+  return snoreClassifier.classifyIntensity(db);
+}
+
+private processAudioFrame(db: number) {
+  this.currentDb = db;
+  if (db > this.peakDb) {
+    this.peakDb = db;
+  }
+
+  const currentMinute = Math.floor(this.totalSeconds / 60);
+  if (!this.minuteBuckets[currentMinute]) {
+    this.minuteBuckets[currentMinute] = [];
+  }
+  this.minuteBuckets[currentMinute].push(db);
+
+  // Intelligens akusztikai osztályozó futtatása
+  const candidate = snoreClassifier.processFrame(db, Date.now());
+  if (candidate) {
+    // Érvényes horkolási esemény: hozzáadjuk a horkolási másodpercekhez
+    const eventSec = Math.max(1, Math.round(candidate.durationMs / 1000));
+    this.snoringSeconds += eventSec;
+
+    // Ha még nem értük el a maximális klip számot, rögzítjük az eseményt
+    if (this.detectedClips.length < 25) {
+      const cat = this.classifyDb(candidate.peakDb);
+      const clip: SnoreClip = {
+        id: `clip-${Date.now()}`,
+        timestamp: new Date(candidate.startTime).toISOString(),
+        offsetSeconds: Math.max(0, this.totalSeconds - eventSec),
+        durationSeconds: eventSec,
+        peakDb: candidate.peakDb,
+        avgDb: candidate.avgDb,
+        category: cat,
+        audioUri: this.recording?.getURI() || '',
+      };
+      this.detectedClips.push(clip);
     }
   }
+}
 
   async stopMonitoring(): Promise<{
     audioUri: string | null;
