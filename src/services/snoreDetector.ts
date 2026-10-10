@@ -30,11 +30,11 @@ const MERGE_GAP_MS = 500;
 // Minimum elevation above the room noise floor (snores over a fan are often only ~8 dB louder)
 const MIN_SNR_DB = 5;
 
-// Onset-to-onset spacing of consecutive breaths (~9 - 27 breaths/min)
+// Onset-to-onset spacing of consecutive breaths (~7.5 - 27 breaths/min; slow sleep breathing included)
 const MIN_BREATH_GAP_MS = 2200;
-const MAX_BREATH_GAP_MS = 6500;
+const MAX_BREATH_GAP_MS = 8000;
 // Within a confirmed run a breath may be skipped (missed quiet snore)
-const MAX_RUN_GAP_MS = 13000;
+const MAX_RUN_GAP_MS = 16000;
 // Two gaps are "regular" when they differ by at most this fraction of the longer one
 const GAP_TOLERANCE = 0.3;
 // A run ends after this many off-rhythm bursts in a row (speech, TV, movement)
