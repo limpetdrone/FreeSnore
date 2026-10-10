@@ -30,7 +30,11 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.WAKE_LOCK",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE"
       ]
     },
     "plugins": [
@@ -56,6 +60,12 @@
     ],
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6fff90a7-e6eb-4fa0-a020-fc640219f35e"
+      }
+    },
+    "owner": "limpetdrone"
   }
 }
