@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   Modal,
+  AppState,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -52,6 +53,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
 
   const countdownTimerRef = useRef<any>(null);
   const clockTimerRef = useRef<any>(null);
+  const isAppActiveRef = useRef<boolean>(true);
 
   useEffect(() => {
     // Load default delay from settings
@@ -59,15 +61,22 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
       setSelectedDelay(s.startDelayMinutes);
     });
 
-    // Real-time clock updater for night mode
+    // App state listener: ha a telefon le van zárva (háttér), szüneteltetjük a UI re-rendert
+    const sub = AppState.addEventListener('change', (nextState) => {
+      isAppActiveRef.current = nextState === 'active';
+    });
+
+    // Éjszakai óra ritkított (5 mp-es) frissítése a CPU terhelés minimalizálására
     clockTimerRef.current = setInterval(() => {
+      if (!isAppActiveRef.current) return;
       const now = new Date();
       setCurrentTimeStr(
         `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
       );
-    }, 1000);
+    }, 5000);
 
     return () => {
+      sub.remove();
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
       if (clockTimerRef.current) clearInterval(clockTimerRef.current);
       deactivateKeepAwake();
@@ -126,7 +135,9 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
   const beginActualRecording = async () => {
     setTrackingState('recording');
     const started = await sleepMonitor.startMonitoring((status) => {
-      setLiveStatus(status);
+      if (isAppActiveRef.current) {
+        setLiveStatus(status);
+      }
     });
 
     if (!started) {

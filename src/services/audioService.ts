@@ -67,11 +67,35 @@ export class SleepMonitorService {
 
     snoreClassifier.reset();
 
-    const recording = new Audio.Recording();
-    await recording.prepareToRecordAsync({
-      ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+    const SLEEP_RECORDING_OPTIONS: Audio.RecordingOptions = {
       isMeteringEnabled: true,
-    });
+      android: {
+        extension: '.m4a',
+        outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+        audioEncoder: Audio.AndroidAudioEncoder.AAC,
+        sampleRate: 22050,
+        numberOfChannels: 1, // Mono: 50% kevesebb CPU és tárhely
+        bitRate: 32000,      // 32kbps AAC tökéletes horkoláshoz
+      },
+      ios: {
+        extension: '.m4a',
+        outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+        audioQuality: Audio.IOSAudioQuality.MEDIUM,
+        sampleRate: 22050,
+        numberOfChannels: 1, // Mono
+        bitRate: 32000,
+        linearPCMBitDepth: 16,
+        linearPCMIsBigEndian: false,
+        linearPCMIsFloat: false,
+      },
+      web: {
+        mimeType: 'audio/webm',
+        bitsPerSecond: 32000,
+      },
+    };
+
+    const recording = new Audio.Recording();
+    await recording.prepareToRecordAsync(SLEEP_RECORDING_OPTIONS);
 
     recording.setProgressUpdateInterval(250);
     recording.setOnRecordingStatusUpdate((status) => {
