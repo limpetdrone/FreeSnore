@@ -37,6 +37,13 @@
         {
           "microphonePermission": "A FreeSnore a mikrofont használja a horkolás alvás közbeni érzékeléséhez és elemzéséhez."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#6366F1",
+          "defaultChannel": "freesnore-tracking"
+        }
       ]
     ],
     "web": {

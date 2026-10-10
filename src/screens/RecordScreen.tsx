@@ -17,6 +17,7 @@ import { calculateSnoreStats } from '../services/scoreCalculator';
 import { saveSession, getSettings } from '../services/storage';
 import { SleepSession } from '../types/session';
 import { COLORS, SNORE_LEVELS } from '../constants/theme';
+import { showTrackingNotification, dismissTrackingNotification } from '../services/notificationService';
 
 interface RecordScreenProps {
   onSessionFinished: (session: SleepSession) => void;
@@ -101,6 +102,10 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
     } else {
       setTrackingState('countdown');
       setCountdownRemainingSec(selectedDelay * 60);
+      showTrackingNotification(
+        `${selectedDelay} perc múlva indul`,
+        'Elalvási késleltetés aktív'
+      );
 
       countdownTimerRef.current = setInterval(() => {
         setCountdownRemainingSec((prev) => {
@@ -129,11 +134,14 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
       countdownTimerRef.current = null;
     }
     await deactivateKeepAwake();
+    await dismissTrackingNotification();
     setTrackingState('idle');
   };
 
   const beginActualRecording = async () => {
     setTrackingState('recording');
+    showTrackingNotification('Alvás figyelése aktív', 'FreeSnore akusztikai felügyelet');
+
     const started = await sleepMonitor.startMonitoring((status) => {
       if (isAppActiveRef.current) {
         setLiveStatus(status);
@@ -147,6 +155,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
       );
       setTrackingState('idle');
       await deactivateKeepAwake();
+      await dismissTrackingNotification();
     }
   };
 
@@ -162,6 +171,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished })
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             await deactivateKeepAwake();
+            await dismissTrackingNotification();
             setNightClockMode(false);
 
             const result = await sleepMonitor.stopMonitoring();

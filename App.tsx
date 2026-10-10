@@ -14,6 +14,7 @@ import { SessionDetailScreen } from './src/screens/SessionDetailScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SleepSession } from './src/types/session';
 import { getSessions } from './src/services/storage';
+import { initNotifications } from './src/services/notificationService';
 import { COLORS } from './src/constants/theme';
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
 
   useEffect(() => {
     loadData();
+    initNotifications();
   }, []);
 
   const handleSessionFinished = (session: SleepSession) => {
