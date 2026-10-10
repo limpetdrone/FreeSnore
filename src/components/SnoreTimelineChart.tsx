@@ -1,135 +1,253 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { TimelineSample } from '../types/session';
-import { COLORS, SNORE_LEVELS } from '../constants/theme';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TouchableOpacity,
+  Alert,
+  GestureResponderEvent,
+  LayoutChangeEvent,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { SnoreIntensity, TimelineSample } from '../types/session';
+import { COLORS } from '../constants/theme';
+import { sleepMonitor } from '../services/audioService';
+import { t } from '../i18n';
 
 interface SnoreTimelineChartProps {
   timeline: TimelineSample[];
+  audioUri?: string; // Whole-night recording; enables tap-to-replay
   height?: number;
+}
+
+interface Column {
+  start: TimelineSample;
+  end: TimelineSample;
+  snoreSeconds: number;
+  snoreDb: number;
+  db: number;
+  category: SnoreIntensity;
+  replayOffset?: number; // Loudest snore in this column (seconds into the audio file)
+}
+
+// Enough columns to resolve single snoring episodes while keeping bars tappable
+const MAX_COLUMNS = 96;
+const REPLAY_SECONDS = 15; // A few breaths around the loudest snore
+// Snoring 40% of the time (e.g. 1.5 s of every 4 s breath) fills a bar
+const FULL_BAR_SNORE_RATIO = 0.4;
+
+const CATEGORY_RANK: Record<SnoreIntensity, number> = { quiet: 0, light: 1, loud: 2, epic: 3 };
+
+const categoryColor = (category: SnoreIntensity) => {
+  switch (category) {
+    case 'epic':
+      return COLORS.epic;
+    case 'loud':
+      return COLORS.loud;
+    case 'light':
+      return COLORS.light;
+    default:
+      return COLORS.quiet;
+  }
+};
+
+const levelLabel = (category: SnoreIntensity) =>
+  t(
+    (
+      {
+        quiet: 'levelQuiet',
+        light: 'levelLight',
+        loud: 'levelLoud',
+        epic: 'levelEpic',
+      } as const
+    )[category]
+  );
+
+function buildColumns(timeline: TimelineSample[]): Column[] {
+  const groupSize = Math.ceil(timeline.length / MAX_COLUMNS);
+  const columns: Column[] = [];
+  for (let i = 0; i < timeline.length; i += groupSize) {
+    const group = timeline.slice(i, i + groupSize);
+    let category: SnoreIntensity = 'quiet';
+    let snoreSeconds = 0;
+    let snoreDbSum = 0;
+    let snoreMinutes = 0;
+    let loudest = 0;
+    let replayOffset: number | undefined;
+    for (const s of group) {
+      if (CATEGORY_RANK[s.category] > CATEGORY_RANK[category]) category = s.category;
+      snoreSeconds += s.snoreSeconds ?? 0;
+      if (s.snoreDb) {
+        snoreDbSum += s.snoreDb;
+        snoreMinutes++;
+        if (s.audioOffsetSeconds !== undefined && s.snoreDb > loudest) {
+          loudest = s.snoreDb;
+          replayOffset = s.audioOffsetSeconds;
+        }
+      }
+    }
+    columns.push({
+      start: group[0],
+      end: group[group.length - 1],
+      snoreSeconds,
+      snoreDb: snoreMinutes > 0 ? Math.round(snoreDbSum / snoreMinutes) : 0,
+      db: Math.round(group.reduce((sum, s) => sum + s.db, 0) / group.length),
+      category,
+      replayOffset,
+    });
+  }
+  return columns;
 }
 
 export const SnoreTimelineChart: React.FC<SnoreTimelineChartProps> = ({
   timeline,
+  audioUri,
   height = 140,
 }) => {
-  const [selectedSample, setSelectedSample] = useState<TimelineSample | null>(null);
+  const [chartWidth, setChartWidth] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  if (!timeline || timeline.length === 0) {
+  const columns = useMemo(() => buildColumns(timeline || []), [timeline]);
+  // Sessions recorded before snore-based timelines only have room loudness per minute
+  const hasSnoreData = useMemo(() => (timeline || []).some((s) => s.snoreSeconds !== undefined), [timeline]);
+  const minutesPerColumn = Math.ceil((timeline?.length || 1) / MAX_COLUMNS);
+
+  // Stop replay when leaving the screen
+  useEffect(() => () => sleepMonitor.stopPlayback(), []);
+
+  if (columns.length === 0) {
     return (
       <View style={[styles.emptyContainer, { height }]}>
-        <Text style={styles.emptyText}>Nincs elegendő adat az éjszakai idővonalhoz</Text>
+        <Text style={styles.emptyText}>{t('timelineEmpty')}</Text>
       </View>
     );
   }
 
-  // Min db 25, max db 85
-  const minDb = 25;
-  const maxDb = 85;
-
-  const getBarHeight = (db: number) => {
-    const ratio = Math.max(0.1, Math.min(1, (db - minDb) / (maxDb - minDb)));
-    return ratio * (height - 35);
+  const barAreaHeight = height - 18;
+  const barHeight = (c: Column) => {
+    const ratio = hasSnoreData
+      ? c.snoreSeconds / (minutesPerColumn * 60) / FULL_BAR_SNORE_RATIO
+      : (c.db - 25) / 60;
+    return Math.max(3, Math.min(1, ratio) * barAreaHeight);
   };
 
-  const getBarColor = (category: string) => {
-    switch (category) {
-      case 'epic':
-        return COLORS.epic;
-      case 'loud':
-        return COLORS.loud;
-      case 'light':
-        return COLORS.light;
-      default:
-        return COLORS.quiet;
+  const handleLayout = (e: LayoutChangeEvent) => setChartWidth(e.nativeEvent.layout.width);
+
+  const handlePress = (e: GestureResponderEvent) => {
+    if (chartWidth <= 0) return;
+    const index = Math.floor((e.nativeEvent.locationX / chartWidth) * columns.length);
+    const next = Math.max(0, Math.min(columns.length - 1, index));
+    if (next !== selected && isPlaying) sleepMonitor.stopPlayback();
+    setSelected(next);
+  };
+
+  const selectedColumn = selected !== null ? columns[selected] : null;
+
+  const handleTogglePlay = async () => {
+    if (isPlaying) {
+      sleepMonitor.stopPlayback();
+      return;
+    }
+    if (!audioUri || selectedColumn?.replayOffset === undefined) return;
+    const started = await sleepMonitor.playClip(
+      audioUri,
+      // Start a little earlier so the snore is heard in context
+      Math.max(0, selectedColumn.replayOffset - 3),
+      REPLAY_SECONDS,
+      () => setIsPlaying(false)
+    );
+    if (started) {
+      setIsPlaying(true);
+    } else {
+      Alert.alert(t('appTitle'), t('noAudioFile'));
     }
   };
 
-  // Select evenly spaced time labels
-  const timeLabelIndices = [
-    0,
-    Math.floor(timeline.length * 0.25),
-    Math.floor(timeline.length * 0.5),
-    Math.floor(timeline.length * 0.75),
-    timeline.length - 1,
-  ].filter((idx, pos, arr) => arr.indexOf(idx) === pos && idx < timeline.length);
+  const rangeLabel = (c: Column) =>
+    c.start === c.end ? c.start.timeFormatted : `${c.start.timeFormatted} – ${c.end.timeFormatted}`;
+
+  const labelIndices = [0, 0.25, 0.5, 0.75, 1]
+    .map((f) => Math.round(f * (columns.length - 1)))
+    .filter((idx, pos, arr) => arr.indexOf(idx) === pos);
 
   return (
     <View style={styles.wrapper}>
-      {/* Selection tooltip banner */}
-      {selectedSample && (
+      {/* Selected time range details and replay */}
+      {selectedColumn && (
         <View style={styles.tooltipRow}>
-          <Text style={styles.tooltipTime}>Időpont: {selectedSample.timeFormatted}</Text>
-          <Text style={[styles.tooltipDb, { color: getBarColor(selectedSample.category) }]}>
-            {selectedSample.db} dB ({SNORE_LEVELS[selectedSample.category]?.label})
-          </Text>
+          <View style={styles.tooltipInfo}>
+            <Text style={styles.tooltipTime}>{rangeLabel(selectedColumn)}</Text>
+            {hasSnoreData ? (
+              <Text style={[styles.tooltipValue, { color: categoryColor(selectedColumn.category) }]}>
+                {selectedColumn.snoreSeconds > 0
+                  ? t('timelineSnoreDetail', {
+                      seconds: selectedColumn.snoreSeconds,
+                      db: selectedColumn.snoreDb,
+                      level: levelLabel(selectedColumn.category),
+                    })
+                  : t('timelineNoSnore')}
+              </Text>
+            ) : (
+              <Text style={[styles.tooltipValue, { color: categoryColor(selectedColumn.category) }]}>
+                {selectedColumn.db} dB ({levelLabel(selectedColumn.category)})
+              </Text>
+            )}
+          </View>
+          {audioUri && selectedColumn.replayOffset !== undefined && (
+            <TouchableOpacity
+              style={[styles.playButton, isPlaying && styles.playButtonActive]}
+              onPress={handleTogglePlay}
+              accessibilityLabel={t(isPlaying ? 'timelineStop' : 'timelinePlay')}
+            >
+              <Ionicons name={isPlaying ? 'stop' : 'play'} size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      {/* Bar graph */}
-      <View style={[styles.chartContainer, { height }]}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <View style={styles.barsContainer}>
-            {timeline.map((sample, index) => {
-              const barH = getBarHeight(sample.db);
-              const isSelected = selectedSample?.offsetMinutes === sample.offsetMinutes;
-
-              return (
-                <TouchableOpacity
-                  key={`sample-${index}`}
-                  activeOpacity={0.7}
-                  onPress={() => setSelectedSample(sample)}
-                  style={styles.barTouchTarget}
-                >
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        height: barH,
-                        backgroundColor: getBarColor(sample.category),
-                        opacity: isSelected ? 1 : 0.85,
-                        width: timeline.length > 50 ? 4 : 8,
-                        transform: isSelected ? [{ scaleY: 1.05 }] : [],
-                      },
-                    ]}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </View>
+      {/* Bars: one pressable surface, the tap position selects the column */}
+      <Pressable
+        style={[styles.chartContainer, { height }]}
+        onLayout={handleLayout}
+        onPress={handlePress}
+      >
+        <View style={styles.barsContainer} pointerEvents="none">
+          {columns.map((c, index) => (
+            <View key={index} style={styles.barSlot}>
+              <View
+                style={[
+                  styles.bar,
+                  {
+                    height: barHeight(c),
+                    backgroundColor: categoryColor(c.category),
+                    opacity: selected === null || selected === index ? 1 : 0.55,
+                  },
+                ]}
+              />
+            </View>
+          ))}
+        </View>
+      </Pressable>
 
       {/* Time axis markers */}
       <View style={styles.timeAxis}>
-        {timeLabelIndices.map((idx) => (
+        {labelIndices.map((idx) => (
           <Text key={`time-marker-${idx}`} style={styles.timeLabel}>
-            {timeline[idx]?.timeFormatted}
+            {columns[idx].start.timeFormatted}
           </Text>
         ))}
       </View>
 
       {/* Legend */}
       <View style={styles.legendRow}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: COLORS.quiet }]} />
-          <Text style={styles.legendText}>Csendes</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: COLORS.light }]} />
-          <Text style={styles.legendText}>Halk</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: COLORS.loud }]} />
-          <Text style={styles.legendText}>Hangos</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: COLORS.epic }]} />
-          <Text style={styles.legendText}>Erős</Text>
-        </View>
+        {(['quiet', 'light', 'loud', 'epic'] as const).map((category) => (
+          <View key={category} style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: categoryColor(category) }]} />
+            <Text style={styles.legendText}>{levelLabel(category)}</Text>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -141,53 +259,69 @@ const styles = StyleSheet.create({
   },
   tooltipRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.surfaceHighlight,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 8,
     marginBottom: 8,
+    minHeight: 48,
+  },
+  tooltipInfo: {
+    flex: 1,
   },
   tooltipTime: {
     color: COLORS.textSecondary,
     fontSize: 12,
     fontWeight: '500',
   },
-  tooltipDb: {
-    fontSize: 12,
+  tooltipValue: {
+    fontSize: 13,
     fontWeight: '700',
+    marginTop: 2,
+  },
+  playButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  playButtonActive: {
+    backgroundColor: COLORS.primary,
   },
   chartContainer: {
     backgroundColor: COLORS.surfaceCard,
     borderRadius: 12,
-    paddingHorizontal: 8,
     paddingTop: 12,
-    justifyContent: 'flex-end',
     borderWidth: 1,
     borderColor: COLORS.border,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'space-between',
+    overflow: 'hidden',
   },
   barsContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: '100%',
     paddingBottom: 6,
   },
-  barTouchTarget: {
-    paddingHorizontal: 1.5,
+  barSlot: {
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'flex-end',
     height: '100%',
   },
   bar: {
-    borderRadius: 3,
+    width: '70%',
+    minWidth: 1,
+    borderRadius: 2,
   },
   timeAxis: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
+    paddingHorizontal: 2,
     marginTop: 6,
   },
   timeLabel: {

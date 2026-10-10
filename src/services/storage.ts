@@ -50,16 +50,17 @@ export async function deleteSession(sessionId: string): Promise<void> {
     const existing = await getSessions();
     const sessionToDelete = existing.find((s) => s.id === sessionId);
 
-    // Clean up audio files if they were recorded
-    if (sessionToDelete?.clips) {
-      for (const clip of sessionToDelete.clips) {
-        if (clip.audioUri && clip.audioUri.startsWith('file://')) {
-          try {
-            await FileSystem.deleteAsync(clip.audioUri, { idempotent: true });
-          } catch (e) {
-            console.warn('Could not delete audio file:', clip.audioUri, e);
-          }
-        }
+    // Clean up the night's recording (clips point into the same file)
+    const audioUris = new Set(
+      [sessionToDelete?.audioUri, ...(sessionToDelete?.clips || []).map((c) => c.audioUri)].filter(
+        (uri): uri is string => !!uri && uri.startsWith('file://')
+      )
+    );
+    for (const uri of audioUris) {
+      try {
+        await FileSystem.deleteAsync(uri, { idempotent: true });
+      } catch (e) {
+        console.warn('Could not delete audio file:', uri, e);
       }
     }
 

@@ -193,7 +193,10 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
             <View style={styles.card}>
               <Text style={styles.sectionHeading}>{t('nightNoiseTimeline')}</Text>
               <Text style={styles.hintText}>{t('timelineHint')}</Text>
-              <SnoreTimelineChart timeline={session.timeline} />
+              <SnoreTimelineChart
+                timeline={session.timeline}
+                audioUri={session.audioUri ?? session.clips?.[0]?.audioUri}
+              />
             </View>
 
             {/* Factors */}

@@ -32,9 +32,12 @@ export async function generateAndSharePdfReport(session: SleepSession): Promise<
     const totalDuration = formatHoursMinutes(session.totalDurationSeconds);
     const snoreDuration = formatHoursMinutes(session.snoreDurationSeconds);
 
+    const hasSnoreData = (session.timeline || []).some((s) => s.snoreSeconds !== undefined);
     const timelineBarsHtml = (session.timeline || [])
       .map((sample) => {
-        const heightPct = Math.min(100, Math.max(10, ((sample.db - 25) / 60) * 100));
+        // Snore time per minute (40% of the minute fills the bar); legacy sessions: room loudness
+        const ratio = hasSnoreData ? (sample.snoreSeconds ?? 0) / 24 : (sample.db - 25) / 60;
+        const heightPct = Math.min(100, Math.max(4, ratio * 100));
         let col = '#10B981';
         if (sample.category === 'epic') col = '#EF4444';
         else if (sample.category === 'loud') col = '#F97316';

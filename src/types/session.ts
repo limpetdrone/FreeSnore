@@ -14,8 +14,12 @@ export interface SnoreClip {
 export interface TimelineSample {
   offsetMinutes: number; // minute index from session start
   timeFormatted: string; // e.g. "01:45"
-  db: number;
-  category: SnoreIntensity;
+  db: number; // Average room loudness in this minute
+  category: SnoreIntensity; // Snore intensity of this minute ('quiet' = no snoring)
+  // Detector results (missing on sessions recorded before snore-based timelines)
+  snoreSeconds?: number;
+  snoreDb?: number; // Average peak loudness of the snores in this minute
+  audioOffsetSeconds?: number; // Position of the loudest snore of this minute in the night's audio file
 }
 
 export interface SleepSession {
@@ -33,6 +37,7 @@ export interface SleepSession {
   peakDb: number;
   timeline: TimelineSample[];
   clips: SnoreClip[];
+  audioUri?: string; // Whole-night recording (kept when snoring was detected)
   factors: string[]; // i18n keys, e.g. ['factorBackSleep', 'remedyNasalStrips'] (legacy sessions: plain text)
   notes?: string;
 }

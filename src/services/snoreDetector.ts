@@ -5,21 +5,30 @@ export interface SnoreEventCandidate {
   durationMs: number;
   peakDb: number;
   avgDb: number;
-  confidence: number; // 0.0 - 1.0
-  isPeriodic: boolean;
 }
 
 /**
  * SnoreClassifier
  *
- * Acoustic and physical rule-based snoring classifier:
- * 1. Running Adaptive Baseline Noise Floor (tracks quiet room level)
- * 2. Duration Gating (0.7s - 3.8s inspiratory phase, filtering out clicks and constant hums)
- * 3. Respiratory Periodicity (2.5s - 6.0s rhythm cadence matching human breathing)
- * 4. Signal-to-Noise Ratio (at least +7 dB above ambient floor)
+ * Rule-based snore detector working on the 250 ms loudness envelope (expo-audio metering):
+ * 1. Adaptive noise floor (tracks the quiet room level, absorbs steady fans/AC)
+ * 2. Burst segmentation: sound at least +7 dB above the floor and above the sensitivity threshold
+ * 3. Duration gating: 0.5 s - 3.8 s (Dafna et al. 2013: 99.9% of snores last 0.2 - 3.5 s)
+ * 4. Respiratory rhythm gating: a burst only counts once it belongs to a run of at least
+ *    three bursts spaced like breaths. Periodicity was the most discriminative feature group
+ *    in Dafna et al.; it rejects knocks, coughs, door slams, passing cars and most speech/TV.
+ *    The first bursts of a run are confirmed retroactively, so no snore is lost.
  */
 const MAX_BURST_MS = 3800;
-const MIN_BURST_MS = 700;
+const MIN_BURST_MS = 500;
+
+// Onset-to-onset spacing of consecutive breaths (~9 - 27 breaths/min)
+const MIN_BREATH_GAP_MS = 2200;
+const MAX_BREATH_GAP_MS = 6500;
+// Within a confirmed run a breath may be skipped (missed quiet snore)
+const MAX_RUN_GAP_MS = 13000;
+// Two gaps are "regular" when they differ by at most this fraction of the longer one
+const GAP_TOLERANCE = 0.3;
 
 export class SnoreClassifier {
   // Adaptive room noise floor (dBA)
@@ -33,8 +42,9 @@ export class SnoreClassifier {
   private burstStartTime: number = 0;
   private burstFrames: number[] = [];
 
-  // Recent detected snore timestamps (for rhythm / periodicity verification)
-  private recentSnoreTimes: number[] = [];
+  // Rhythm gating state: last unconfirmed bursts and the onset of the last counted snore
+  private pending: SnoreEventCandidate[] = [];
+  private lastConfirmedStart: number | null = null;
 
   constructor(initialFloor: number = 32) {
     this.noiseFloor = initialFloor;
@@ -46,7 +56,8 @@ export class SnoreClassifier {
     this.inSoundBurst = false;
     this.burstStartTime = 0;
     this.burstFrames = [];
-    this.recentSnoreTimes = [];
+    this.pending = [];
+    this.lastConfirmedStart = null;
   }
 
   setMinThreshold(db: number) {
@@ -57,8 +68,9 @@ export class SnoreClassifier {
    * Process every incoming audio meter frame (e.g. every 250 ms)
    * @param currentDb Current measured decibel level
    * @param timestampMs Current timestamp in ms
+   * @returns Snore events confirmed by this frame (usually empty; several when a run is confirmed)
    */
-  processFrame(currentDb: number, timestampMs: number = Date.now()): SnoreEventCandidate | null {
+  processFrame(currentDb: number, timestampMs: number = Date.now()): SnoreEventCandidate[] {
     // 1. Adaptive noise floor update (slow tracking when quiet)
     if (!this.inSoundBurst) {
       this.noiseFloor = this.noiseFloor * 0.95 + currentDb * 0.05;
@@ -66,11 +78,9 @@ export class SnoreClassifier {
 
     // Audio must noticeably exceed the ambient baseline (min +7 dB)
     const threshold = Math.max(this.minThresholdDb, this.noiseFloor + 7);
-    const isAboveThreshold = currentDb >= threshold;
 
-    if (isAboveThreshold) {
+    if (currentDb >= threshold) {
       if (!this.inSoundBurst) {
-        // New sound burst starts
         this.inSoundBurst = true;
         this.burstStartTime = timestampMs;
         this.burstFrames = [currentDb];
@@ -79,85 +89,73 @@ export class SnoreClassifier {
         // Excessively long sound: continuous noise (fan, AC, traffic, TV).
         // Discard burst and elevate floor to avoid infinite burst state.
         if (timestampMs - this.burstStartTime > MAX_BURST_MS) {
-          this.noiseFloor =
-            this.burstFrames.reduce((a, b) => a + b, 0) / this.burstFrames.length;
+          this.noiseFloor = this.burstFrames.reduce((a, b) => a + b, 0) / this.burstFrames.length;
           this.inSoundBurst = false;
           this.burstFrames = [];
         }
       }
-      return null;
-    } else {
-      if (this.inSoundBurst) {
-        // Sound burst ended, evaluate candidates
-        this.inSoundBurst = false;
-        const durationMs = timestampMs - this.burstStartTime;
-        const result = this.evaluateBurst(this.burstFrames, durationMs, timestampMs);
-        this.burstFrames = [];
-        return result;
-      }
-      return null;
+      return [];
     }
+
+    if (!this.inSoundBurst) return [];
+
+    this.inSoundBurst = false;
+    const candidate = this.evaluateBurst(this.burstFrames, timestampMs - this.burstStartTime);
+    this.burstFrames = [];
+    return candidate ? this.applyRhythmGate(candidate) : [];
   }
 
-  private evaluateBurst(
-    frames: number[],
-    durationMs: number,
-    _endTimeMs: number
-  ): SnoreEventCandidate | null {
+  private evaluateBurst(frames: number[], durationMs: number): SnoreEventCandidate | null {
     if (frames.length === 0) return null;
+    // Under 0.5 s: click, knock, bed squeak. Over 3.8 s: handled above as continuous noise.
+    if (durationMs < MIN_BURST_MS || durationMs > MAX_BURST_MS) return null;
 
     const peakDb = Math.max(...frames);
-    const avgDb = Math.round(frames.reduce((a, b) => a + b, 0) / frames.length);
-
-    // --- RULE 1: Duration Gating ---
-    // Human snore inhalation typically lasts 0.7s to 3.5s.
-    // - Under 700 ms: likely a cough, bed squeak, or impulse click.
-    // - Over 3800 ms: continuous ambient noise (fan, traffic, droning AC).
-    const isDurationValid = durationMs >= MIN_BURST_MS && durationMs <= MAX_BURST_MS;
-    if (!isDurationValid) {
-      return null;
-    }
-
-    // --- RULE 2: Elevation above ambient baseline ---
-    const snr = peakDb - this.noiseFloor;
-    if (snr < 7) {
-      return null;
-    }
-
-    // --- RULE 3: Respiratory Periodicity (Cadence) ---
-    // Resting human respiratory rate produces repetitions every 2.5s to 6.0s.
-    let isPeriodic = false;
-    let confidence = 0.6; // Baseline confidence from duration + SNR
-
-    if (this.recentSnoreTimes.length > 0) {
-      const lastSnoreTime = this.recentSnoreTimes[this.recentSnoreTimes.length - 1];
-      const deltaSec = (this.burstStartTime - lastSnoreTime) / 1000;
-
-      // If time since previous snore burst matches respiratory rate (2.2s - 6.5s)
-      if (deltaSec >= 2.2 && deltaSec <= 6.5) {
-        isPeriodic = true;
-        confidence = 0.95; // High confidence periodic match
-      } else if (deltaSec > 6.5 && deltaSec <= 13.0) {
-        // Skipped one respiratory cycle, still rhythmic
-        isPeriodic = true;
-        confidence = 0.8;
-      }
-    }
-
-    // Keep history of last 5 snore event timestamps
-    this.recentSnoreTimes.push(this.burstStartTime);
-    if (this.recentSnoreTimes.length > 5) {
-      this.recentSnoreTimes.shift();
-    }
+    if (peakDb - this.noiseFloor < 7) return null;
 
     return {
       startTime: this.burstStartTime,
       durationMs,
       peakDb,
-      avgDb,
-      confidence,
-      isPeriodic,
+      avgDb: Math.round(frames.reduce((a, b) => a + b, 0) / frames.length),
     };
+  }
+
+  private applyRhythmGate(c: SnoreEventCandidate): SnoreEventCandidate[] {
+    // Inside a confirmed run: every further breath-spaced burst counts directly
+    if (this.lastConfirmedStart !== null) {
+      const gap = c.startTime - this.lastConfirmedStart;
+      if (gap < MIN_BREATH_GAP_MS) return []; // Fragment of the same breath
+      if (gap <= MAX_RUN_GAP_MS) {
+        this.lastConfirmedStart = c.startTime;
+        return [c];
+      }
+      this.lastConfirmedStart = null; // Run ended
+    }
+
+    // The last two bursts and this one must follow each other like regular breaths.
+    // Only consecutive bursts count: fast speech would otherwise yield breath-like
+    // spacing between every second syllable.
+    const n = this.pending.length;
+    if (n >= 2) {
+      const a = this.pending[n - 2];
+      const b = this.pending[n - 1];
+      const gap1 = b.startTime - a.startTime;
+      const gap2 = c.startTime - b.startTime;
+      if (
+        isBreathGap(gap1) &&
+        isBreathGap(gap2) &&
+        Math.abs(gap1 - gap2) <= GAP_TOLERANCE * Math.max(gap1, gap2)
+      ) {
+        this.pending = [];
+        this.lastConfirmedStart = c.startTime;
+        return [a, b, c];
+      }
+    }
+
+    this.pending.push(c);
+    if (this.pending.length > 2) this.pending.shift();
+    return [];
   }
 
   classifyIntensity(peakDb: number): SnoreIntensity {
@@ -170,6 +168,10 @@ export class SnoreClassifier {
   getCurrentNoiseFloor(): number {
     return Math.round(this.noiseFloor);
   }
+}
+
+function isBreathGap(gapMs: number): boolean {
+  return gapMs >= MIN_BREATH_GAP_MS && gapMs <= MAX_BREATH_GAP_MS;
 }
 
 export const snoreClassifier = new SnoreClassifier();

@@ -26,6 +26,8 @@ function generateTimeline(hours: number, snoreIntensityFactor: number, startHour
       timeFormatted,
       db: clampedDb,
       category,
+      snoreSeconds: category === 'quiet' ? 0 : Math.round(((clampedDb - 35) / 50) * 40),
+      snoreDb: category === 'quiet' ? 0 : clampedDb,
     });
   }
   return samples;

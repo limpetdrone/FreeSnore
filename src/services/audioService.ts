@@ -10,7 +10,7 @@ import type { AudioPlayer, AudioRecorder } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { SnoreIntensity, SnoreClip, TimelineSample } from '../types/session';
-import { snoreClassifier } from './snoreDetector';
+import { SnoreEventCandidate, snoreClassifier } from './snoreDetector';
 
 export interface LiveAudioStatus {
   currentDb: number;
@@ -38,6 +38,26 @@ export interface MonitoringResult {
 }
 
 const FRAME_INTERVAL_MS = 250;
+
+interface MinuteBucket {
+  dbSum: number;
+  frames: number;
+  snoreMs: number;
+  snorePeakSum: number;
+  snoreEvents: number;
+  loudestSnoreDb: number;
+  loudestSnoreOffset: number; // Seconds into the audio file
+}
+
+const emptyBucket = (): MinuteBucket => ({
+  dbSum: 0,
+  frames: 0,
+  snoreMs: 0,
+  snorePeakSum: 0,
+  snoreEvents: 0,
+  loudestSnoreDb: 0,
+  loudestSnoreOffset: 0,
+});
 
 // Mono, 22 kHz, 32 kbps AAC: optimal for snore frequencies (<1.5 kHz), low CPU and storage footprint
 const SLEEP_RECORDING_OPTIONS = {
@@ -80,10 +100,11 @@ export class SleepMonitorService {
   private currentDb: number = 30;
   private peakDb: number = 30;
   private snoringSeconds: number = 0;
+  private snoringMs: number = 0;
 
   // Real-time tracking arrays
-  // Running sum/count per minute instead of every frame (~115k values per night)
-  private minuteBuckets: { [minute: number]: { sum: number; count: number } } = {};
+  // Running sums per minute instead of every frame (~115k values per night)
+  private minuteBuckets: { [minute: number]: MinuteBucket } = {};
   private detectedClips: SnoreClip[] = [];
 
   private onStatusCallback: ((status: LiveAudioStatus) => void) | null = null;
@@ -145,6 +166,7 @@ export class SleepMonitorService {
       this.currentDb = 30;
       this.peakDb = 30;
       this.snoringSeconds = 0;
+      this.snoringMs = 0;
       this.minuteBuckets = {};
       this.detectedClips = [];
 
@@ -212,37 +234,64 @@ export class SleepMonitorService {
       this.peakDb = db;
     }
 
-    const currentMinute = Math.floor((now - this.monitorStartTime) / 60000);
-    const bucket = this.minuteBuckets[currentMinute];
-    if (bucket) {
-      bucket.sum += db;
-      bucket.count += 1;
-    } else {
-      this.minuteBuckets[currentMinute] = { sum: db, count: 1 };
+    const bucket = this.bucketAt(now);
+    bucket.dbSum += db;
+    bucket.frames += 1;
+
+    // Run acoustic classifier. Confirmed events can lie a few breaths in the past.
+    for (const event of snoreClassifier.processFrame(db, now)) {
+      this.registerSnore(event);
+    }
+  }
+
+  private bucketAt(timestampMs: number): MinuteBucket {
+    const minute = Math.max(0, Math.floor((timestampMs - this.monitorStartTime) / 60000));
+    return (this.minuteBuckets[minute] ??= emptyBucket());
+  }
+
+  private registerSnore(event: SnoreEventCandidate) {
+    this.snoringMs += event.durationMs;
+    this.snoringSeconds = Math.round(this.snoringMs / 1000);
+
+    const offsetSeconds = Math.max(0, (event.startTime - this.recordingStartTime) / 1000);
+    const bucket = this.bucketAt(event.startTime);
+    bucket.snoreMs += event.durationMs;
+    bucket.snorePeakSum += event.peakDb;
+    bucket.snoreEvents += 1;
+    if (event.peakDb > bucket.loudestSnoreDb) {
+      bucket.loudestSnoreDb = event.peakDb;
+      bucket.loudestSnoreOffset = offsetSeconds;
     }
 
-    // Run acoustic classifier
-    const candidate = snoreClassifier.processFrame(db, now);
-    if (candidate) {
-      // Valid snore event: accumulate snore duration
-      const eventSec = Math.max(1, Math.round(candidate.durationMs / 1000));
-      this.snoringSeconds += eventSec;
+    if (!this.options.saveAudio || this.options.maxClips <= 0) return;
 
-      // Register audio clip reference if within limit
-      if (this.options.saveAudio && this.detectedClips.length < this.options.maxClips) {
-        this.detectedClips.push({
-          id: `clip-${candidate.startTime}`,
-          timestamp: new Date(candidate.startTime).toISOString(),
-          // Position offset within the continuous night recording file (in seconds)
-          offsetSeconds: Math.max(0, (candidate.startTime - this.recordingStartTime) / 1000),
-          durationSeconds: eventSec,
-          peakDb: candidate.peakDb,
-          avgDb: candidate.avgDb,
-          category: this.classifyDb(candidate.peakDb),
-          audioUri: '',
-        });
-      }
+    // Keep the loudest snores of the night as highlights, at most one per minute
+    const clip: SnoreClip = {
+      id: `clip-${event.startTime}`,
+      timestamp: new Date(event.startTime).toISOString(),
+      offsetSeconds,
+      durationSeconds: Math.max(1, Math.round(event.durationMs / 1000)),
+      peakDb: event.peakDb,
+      avgDb: event.avgDb,
+      category: this.classifyDb(event.peakDb),
+      audioUri: '',
+    };
+    const minuteOf = (c: SnoreClip) =>
+      Math.floor((new Date(c.timestamp).getTime() - this.monitorStartTime) / 60000);
+    const sameMinute = this.detectedClips.findIndex((c) => minuteOf(c) === minuteOf(clip));
+    if (sameMinute >= 0) {
+      if (this.detectedClips[sameMinute].peakDb < clip.peakDb) this.detectedClips[sameMinute] = clip;
+      return;
     }
+    if (this.detectedClips.length < this.options.maxClips) {
+      this.detectedClips.push(clip);
+      return;
+    }
+    let quietest = 0;
+    this.detectedClips.forEach((c, i) => {
+      if (c.peakDb < this.detectedClips[quietest].peakDb) quietest = i;
+    });
+    if (this.detectedClips[quietest].peakDb < clip.peakDb) this.detectedClips[quietest] = clip;
   }
 
   private async releaseRecorder(deleteFile: boolean): Promise<string | null> {
@@ -304,7 +353,7 @@ export class SleepMonitorService {
     const startTime = Math.min(this.monitorStartTime, now);
     const totalSeconds = Math.max(1, Math.floor((now - startTime) / 1000));
 
-    const keepAudio = this.options.saveAudio && this.detectedClips.length > 0;
+    const keepAudio = this.options.saveAudio && this.snoringMs > 0;
     const finalUri = await this.releaseRecorder(!keepAudio);
 
     // Compile timeline samples
@@ -312,23 +361,32 @@ export class SleepMonitorService {
     const minutes = Object.keys(this.minuteBuckets).map(Number).sort((a, b) => a - b);
 
     for (const m of minutes) {
-      const { sum, count } = this.minuteBuckets[m];
-      const roundedDb = Math.round(sum / count);
+      const b = this.minuteBuckets[m];
+      if (b.frames === 0) continue;
 
       const sampleTime = new Date(startTime + m * 60 * 1000);
       const hh = sampleTime.getHours().toString().padStart(2, '0');
       const mm = sampleTime.getMinutes().toString().padStart(2, '0');
+      const snoreDb = b.snoreEvents > 0 ? Math.round(b.snorePeakSum / b.snoreEvents) : 0;
 
       timeline.push({
         offsetMinutes: m,
         timeFormatted: `${hh}:${mm}`,
-        db: roundedDb,
-        category: this.classifyDb(roundedDb),
+        db: Math.round(b.dbSum / b.frames),
+        // Minute category reflects detected snoring only, not room loudness (a fan is not a snore)
+        category: b.snoreEvents > 0 ? this.classifyDb(snoreDb) : 'quiet',
+        snoreSeconds: Math.round(b.snoreMs / 1000),
+        snoreDb,
+        ...(b.snoreEvents > 0 && finalUri ? { audioOffsetSeconds: b.loudestSnoreOffset } : {}),
       });
     }
 
-    // Assign final audio URI to recorded clips
-    const clips = finalUri ? this.detectedClips.map((c) => ({ ...c, audioUri: finalUri })) : [];
+    // Assign final audio URI to recorded clips, in chronological order
+    const clips = finalUri
+      ? this.detectedClips
+          .map((c) => ({ ...c, audioUri: finalUri }))
+          .sort((a, b) => a.offsetSeconds - b.offsetSeconds)
+      : [];
 
     return {
       audioUri: finalUri,

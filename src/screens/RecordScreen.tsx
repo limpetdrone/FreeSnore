@@ -66,6 +66,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
   const [countdownRemainingSec, setCountdownRemainingSec] = useState<number>(0);
   // Translation keys, not labels, so stats survive a language switch
   const [selectedFactors, setSelectedFactors] = useState<string[]>(['factorSideSleep']);
+  const [showFactors, setShowFactors] = useState<boolean>(false);
   const [nightClockMode, setNightClockMode] = useState<boolean>(false);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>(() => formatClock(new Date()));
   // Small per-minute offset of the night clock text against OLED burn-in
@@ -286,6 +287,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
               peakDb: result.peakDb,
               timeline: result.timeline,
               clips: result.clips,
+              ...(result.audioUri ? { audioUri: result.audioUri } : {}),
               factors: selectedFactors,
             };
 
@@ -480,21 +482,40 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     );
   }
 
-  // 4. IDLE / SETUP VIEW (Delay, Factors & Remedies, Start button)
+  // 4. IDLE / SETUP VIEW (Start Button, Delay, Factors & Remedies)
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.idleScroll}>
       <View style={styles.heroSection}>
         <View style={styles.moonBadge}>
-          <Ionicons name="bed" size={28} color={COLORS.primaryLight} />
+          <Ionicons name="bed" size={26} color={COLORS.primaryLight} />
         </View>
         <Text style={styles.title}>{t('recordHeroTitle')}</Text>
         <Text style={styles.subtitle}>{t('recordHeroSubtitle')}</Text>
       </View>
 
+      {/* Primary Action: Big Start Button at the top */}
+      <TouchableOpacity
+        style={styles.startHeroButton}
+        onPress={startCountdownOrRecording}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="play" size={24} color="#FFFFFF" style={{ marginRight: 10 }} />
+        <View style={styles.startBtnTextCol}>
+          <Text style={styles.startHeroButtonText}>{t('startTrackingButton')}</Text>
+          <Text style={styles.startHeroButtonSub}>
+            {selectedDelay === 0
+              ? t('immediate')
+              : t('startTrackingWithDelay', {
+                  delay: `${selectedDelay} ${t('minutesSuffix')}`,
+                })}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
       {/* Delay selection card */}
       <View style={styles.setupCard}>
         <View style={styles.cardHeaderRow}>
-          <Ionicons name="timer-outline" size={22} color={COLORS.primaryLight} />
+          <Ionicons name="timer-outline" size={20} color={COLORS.primaryLight} />
           <Text style={styles.cardTitle}>{t('delayCardTitle')}</Text>
         </View>
         <Text style={styles.cardDesc}>{t('delayCardDesc')}</Text>
@@ -520,73 +541,115 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         </View>
       </View>
 
-      {/* Sleep factors & remedies tracker */}
+      {/* Sleep factors & remedies tracker (collapsible) */}
       <View style={styles.setupCard}>
-        <View style={styles.cardHeaderRow}>
-          <Ionicons name="pulse-outline" size={22} color={COLORS.accent} />
-          <Text style={styles.cardTitle}>{t('factorsCardTitle')}</Text>
-        </View>
-        <Text style={styles.cardDesc}>{t('factorsCardDesc')}</Text>
-
-        {/* Aggravating Triggers */}
-        <Text style={styles.subHeading}>{t('factorsSectionAggravating')}</Text>
-        <View style={styles.factorsGrid}>
-          {AGGRAVATING_KEYS.map((key) => {
-            const label = t(key);
-            const isSelected = selectedFactors.includes(key);
-            return (
-              <TouchableOpacity
-                key={key}
-                style={[styles.factorChip, isSelected && styles.factorChipActive]}
-                onPress={() => toggleFactor(key)}
-              >
-                {isSelected && (
-                  <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
-                )}
-                <Text style={[styles.factorChipText, isSelected && styles.factorChipTextActive]}>
-                  {label}
+        <TouchableOpacity
+          style={styles.cardHeaderRowClickable}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowFactors(!showFactors);
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={styles.cardHeaderTitleRow}>
+            <Ionicons name="pulse-outline" size={20} color={COLORS.accent} />
+            <Text style={styles.cardTitle}>{t('factorsCardTitle')}</Text>
+            {selectedFactors.length > 0 && (
+              <View style={styles.factorCountBadge}>
+                <Text style={styles.factorCountText}>
+                  {t('factorsSelectedCount', { count: selectedFactors.length })}
                 </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+              </View>
+            )}
+          </View>
+          <Ionicons
+            name={showFactors ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={COLORS.textSecondary}
+          />
+        </TouchableOpacity>
 
-        {/* Remedies Applied */}
-        <Text style={[styles.subHeading, { marginTop: 14 }]}>{t('factorsSectionRemedies')}</Text>
-        <View style={styles.factorsGrid}>
-          {REMEDY_KEYS.map((key) => {
-            const label = t(key);
-            const isSelected = selectedFactors.includes(key);
-            return (
-              <TouchableOpacity
-                key={key}
-                style={[styles.remedyChip, isSelected && styles.remedyChipActive]}
-                onPress={() => toggleFactor(key)}
-              >
-                {isSelected && (
-                  <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+        {showFactors ? (
+          <View style={{ marginTop: 8 }}>
+            <Text style={styles.cardDesc}>{t('factorsCardDesc')}</Text>
+
+            {/* Aggravating Triggers */}
+            <Text style={styles.subHeading}>{t('factorsSectionAggravating')}</Text>
+            <View style={styles.factorsGrid}>
+              {AGGRAVATING_KEYS.map((key) => {
+                const label = t(key);
+                const isSelected = selectedFactors.includes(key);
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.factorChip, isSelected && styles.factorChipActive]}
+                    onPress={() => toggleFactor(key)}
+                  >
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+                    )}
+                    <Text style={[styles.factorChipText, isSelected && styles.factorChipTextActive]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Remedies Applied */}
+            <Text style={[styles.subHeading, { marginTop: 14 }]}>{t('factorsSectionRemedies')}</Text>
+            <View style={styles.factorsGrid}>
+              {REMEDY_KEYS.map((key) => {
+                const label = t(key);
+                const isSelected = selectedFactors.includes(key);
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.remedyChip, isSelected && styles.remedyChipActive]}
+                    onPress={() => toggleFactor(key)}
+                  >
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+                    )}
+                    <Text style={[styles.factorChipText, isSelected && styles.factorChipTextActive]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.collapsedPreviewRow}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowFactors(true);
+            }}
+            activeOpacity={0.7}
+          >
+            {selectedFactors.length > 0 ? (
+              <View style={styles.previewChipsRow}>
+                {selectedFactors.slice(0, 3).map((key) => (
+                  <View key={key} style={styles.previewChip}>
+                    <Text style={styles.previewChipText}>{t(key as any)}</Text>
+                  </View>
+                ))}
+                {selectedFactors.length > 3 && (
+                  <Text style={styles.previewMoreText}>+{selectedFactors.length - 3}</Text>
                 )}
-                <Text style={[styles.factorChipText, isSelected && styles.factorChipTextActive]}>
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+              </View>
+            ) : (
+              <Text style={styles.collapsedPromptText}>{t('tapToCustomize')}</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Big Start Button */}
-      <TouchableOpacity
-        style={styles.startHeroButton}
-        onPress={startCountdownOrRecording}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="play" size={26} color="#FFFFFF" style={{ marginRight: 8 }} />
-        <Text style={styles.startHeroButtonText}>{t('startTrackingButton')}</Text>
-      </TouchableOpacity>
-
       <Text style={styles.bottomTips}>{t('chargingTip')}</Text>
-      <Text style={[styles.bottomTips, { marginTop: 2 }]}>{Platform.OS === 'ios' ? t('lockTipIos') : t('lockTipAndroid')}</Text>
+      <Text style={[styles.bottomTips, { marginTop: 2 }]}>
+        {Platform.OS === 'ios' ? t('lockTipIos') : t('lockTipAndroid')}
+      </Text>
     </ScrollView>
   );
 };
@@ -602,35 +665,36 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     alignItems: 'center',
-    marginVertical: 16,
+    marginTop: 8,
+    marginBottom: 14,
   },
   moonBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: COLORS.surfaceHighlight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginTop: 6,
-    paddingHorizontal: 20,
-    lineHeight: 18,
+    marginTop: 4,
+    paddingHorizontal: 16,
+    lineHeight: 16,
   },
   setupCard: {
     backgroundColor: COLORS.surfaceCard,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -638,7 +702,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  cardHeaderRowClickable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  cardHeaderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  factorCountBadge: {
+    backgroundColor: COLORS.surfaceHighlight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  factorCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.accent,
+  },
+  collapsedPreviewRow: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  previewChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  previewChip: {
+    backgroundColor: COLORS.surfaceHighlight,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  previewChipText: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  previewMoreText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '700',
+    marginLeft: 2,
+  },
+  collapsedPromptText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontStyle: 'italic',
   },
   cardTitle: {
     fontSize: 15,
@@ -730,20 +854,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderRadius: 16,
-    marginVertical: 12,
+    marginBottom: 14,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.4,
     shadowRadius: 10,
     elevation: 6,
+  },
+  startBtnTextCol: {
+    alignItems: 'center',
   },
   startHeroButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+  startHeroButtonSub: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
   },
   bottomTips: {
     color: COLORS.textMuted,
