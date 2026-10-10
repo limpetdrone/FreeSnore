@@ -12,6 +12,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keepAwake: true,
   saveAudioClips: true,
   maxClipsPerSession: 15,
+  language: 'hu',
+  antiSnoreNudge: false,
+  nudgeThresholdDb: 56,
 };
 
 export async function getSessions(): Promise<SleepSession[]> {

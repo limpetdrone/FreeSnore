@@ -7,6 +7,8 @@ export interface SnoreEventCandidate {
   avgDb: number;
   confidence: number; // 0.0 - 1.0
   isPeriodic: boolean;
+  shouldNudge: boolean; // Triggers anti-snore gentle haptic vibration
+  isApneaGasp: boolean; // Suspected post-apnea recovery gasp
 }
 
 /**
@@ -17,9 +19,12 @@ export interface SnoreEventCandidate {
  * 2. Duration Gating (0.7s - 3.8s inspiratory phase, filtering out clicks and constant hums)
  * 3. Respiratory Periodicity (2.5s - 6.0s rhythm cadence matching human breathing)
  * 4. Signal-to-Noise Ratio (at least +7 dB above ambient floor)
+ * 5. Anti-Snore Nudge state machine (vibrates upon consecutive loud snores)
+ * 6. Apnea Pattern Detector (detects silence-gasp sequences after loud snoring)
  */
 const MAX_BURST_MS = 3800;
 const MIN_BURST_MS = 700;
+const NUDGE_COOLDOWN_MS = 25000; // 25 seconds minimum between nudges
 
 export class SnoreClassifier {
   // Adaptive room noise floor (dBA)
@@ -27,6 +32,16 @@ export class SnoreClassifier {
 
   // Absolute minimum threshold (from sensitivity setting)
   private minThresholdDb: number = 44;
+
+  // Nudge trigger threshold (dB)
+  private nudgeThresholdDb: number = 56;
+  private nudgeEnabled: boolean = false;
+  private consecutiveLoudSnores: number = 0;
+  private lastNudgeTime: number = 0;
+
+  // Apnea detection state
+  private lastLoudSnoreEndTime: number = 0;
+  private apneaEventCount: number = 0;
 
   // Current sound burst state
   private inSoundBurst: boolean = false;
@@ -47,10 +62,23 @@ export class SnoreClassifier {
     this.burstStartTime = 0;
     this.burstFrames = [];
     this.recentSnoreTimes = [];
+    this.consecutiveLoudSnores = 0;
+    this.lastNudgeTime = 0;
+    this.lastLoudSnoreEndTime = 0;
+    this.apneaEventCount = 0;
   }
 
   setMinThreshold(db: number) {
     this.minThresholdDb = db;
+  }
+
+  setNudgeConfig(enabled: boolean, thresholdDb: number = 56) {
+    this.nudgeEnabled = enabled;
+    this.nudgeThresholdDb = thresholdDb;
+  }
+
+  getApneaCount(): number {
+    return this.apneaEventCount;
   }
 
   /**
@@ -102,7 +130,7 @@ export class SnoreClassifier {
   private evaluateBurst(
     frames: number[],
     durationMs: number,
-    _endTimeMs: number
+    endTimeMs: number
   ): SnoreEventCandidate | null {
     if (frames.length === 0) return null;
 
@@ -144,6 +172,39 @@ export class SnoreClassifier {
       }
     }
 
+    // --- RULE 4: Apnea Gasp Detection ---
+    // Obstructive apnea cycle: loud snoring -> 10s-40s silence -> loud explosive recovery gasp
+    let isApneaGasp = false;
+    if (this.lastLoudSnoreEndTime > 0) {
+      const silenceDurationMs = this.burstStartTime - this.lastLoudSnoreEndTime;
+      if (silenceDurationMs >= 10000 && silenceDurationMs <= 40000 && peakDb >= 55) {
+        isApneaGasp = true;
+        this.apneaEventCount += 1;
+      }
+    }
+
+    if (peakDb >= 52) {
+      this.lastLoudSnoreEndTime = endTimeMs;
+    }
+
+    // --- RULE 5: Anti-Snore Nudge Trigger ---
+    let shouldNudge = false;
+    if (peakDb >= this.nudgeThresholdDb && isPeriodic) {
+      this.consecutiveLoudSnores += 1;
+      const timeSinceNudge = endTimeMs - this.lastNudgeTime;
+      if (
+        this.nudgeEnabled &&
+        this.consecutiveLoudSnores >= 3 &&
+        timeSinceNudge >= NUDGE_COOLDOWN_MS
+      ) {
+        shouldNudge = true;
+        this.lastNudgeTime = endTimeMs;
+        this.consecutiveLoudSnores = 0;
+      }
+    } else if (!isPeriodic) {
+      this.consecutiveLoudSnores = 0;
+    }
+
     // Keep history of last 5 snore event timestamps
     this.recentSnoreTimes.push(this.burstStartTime);
     if (this.recentSnoreTimes.length > 5) {
@@ -157,6 +218,8 @@ export class SnoreClassifier {
       avgDb,
       confidence,
       isPeriodic,
+      shouldNudge,
+      isApneaGasp,
     };
   }
 

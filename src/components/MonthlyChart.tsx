@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SleepSession } from '../types/session';
 import { COLORS } from '../constants/theme';
+import { t, getLanguage } from '../i18n';
 
 interface MonthlyChartProps {
   sessions: SleepSession[];
@@ -9,6 +10,7 @@ interface MonthlyChartProps {
 }
 
 export const MonthlyChart: React.FC<MonthlyChartProps> = ({ sessions }) => {
+  const isHu = getLanguage() === 'hu';
   // Filter sessions in the last 30 days
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -23,10 +25,10 @@ export const MonthlyChart: React.FC<MonthlyChartProps> = ({ sessions }) => {
 
   // Breakdown by 4 weeks (Week 1, Week 2, Week 3, Week 4)
   const weekBuckets = [
-    { label: '1-7. nap', sessions: [] as SleepSession[] },
-    { label: '8-14. nap', sessions: [] as SleepSession[] },
-    { label: '15-21. nap', sessions: [] as SleepSession[] },
-    { label: '22-30. nap', sessions: [] as SleepSession[] },
+    { label: isHu ? '1-7. nap' : 'Days 1-7', sessions: [] as SleepSession[] },
+    { label: isHu ? '8-14. nap' : 'Days 8-14', sessions: [] as SleepSession[] },
+    { label: isHu ? '15-21. nap' : 'Days 15-21', sessions: [] as SleepSession[] },
+    { label: isHu ? '22-30. nap' : 'Days 22-30', sessions: [] as SleepSession[] },
   ];
 
   monthlySessions.forEach((s) => {
@@ -67,17 +69,17 @@ export const MonthlyChart: React.FC<MonthlyChartProps> = ({ sessions }) => {
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.title}>Havi Trendek és Elemzés</Text>
-          <Text style={styles.subtitle}>Elmúlt 30 nap statisztikája</Text>
+          <Text style={styles.title}>{t('monthlyTitle')}</Text>
+          <Text style={styles.subtitle}>{t('monthlySubtitle')}</Text>
         </View>
         <View style={styles.badge}>
-          <Text style={styles.badgeLabel}>Havi átlag</Text>
+          <Text style={styles.badgeLabel}>{t('monthlyAverage')}</Text>
           <Text style={[styles.badgeScore, { color: getScoreColor(avgScore) }]}>{avgScore}</Text>
         </View>
       </View>
 
       {/* 4-week progression */}
-      <Text style={styles.sectionTitle}>Heti bontás (utolsó 4 hét):</Text>
+      <Text style={styles.sectionTitle}>{t('fourWeekProgression')}</Text>
       <View style={styles.weeksContainer}>
         {weekBuckets.map((wb, idx) => {
           const wAvg =
@@ -89,9 +91,11 @@ export const MonthlyChart: React.FC<MonthlyChartProps> = ({ sessions }) => {
             <View key={idx} style={styles.weekCard}>
               <Text style={styles.weekLabel}>{wb.label}</Text>
               <Text style={[styles.weekScore, { color: getScoreColor(wAvg) }]}>
-                {wb.sessions.length > 0 ? `${wAvg} pont` : '-'}
+                {wb.sessions.length > 0 ? `${wAvg} ${t('points')}` : '-'}
               </Text>
-              <Text style={styles.weekCount}>{wb.sessions.length} éjszaka</Text>
+              <Text style={styles.weekCount}>
+                {wb.sessions.length} {t('nightsSuffix')}
+              </Text>
             </View>
           );
         })}
@@ -100,16 +104,18 @@ export const MonthlyChart: React.FC<MonthlyChartProps> = ({ sessions }) => {
       {/* Factor impact */}
       {factorRankings.length > 0 && (
         <View style={styles.factorSection}>
-          <Text style={styles.sectionTitle}>Kiváltó tényezők hatása:</Text>
+          <Text style={styles.sectionTitle}>{t('remedyImpactTitle')}</Text>
           {factorRankings.slice(0, 4).map((item, idx) => (
             <View key={idx} style={styles.factorRow}>
               <View style={styles.factorNameBox}>
                 <Text style={styles.factorName}>{item.factor}</Text>
-                <Text style={styles.factorCount}>{item.count} alkalom</Text>
+                <Text style={styles.factorCount}>
+                  {item.count} {t('occurrencesSuffix')}
+                </Text>
               </View>
               <View style={styles.factorScoreBox}>
                 <Text style={[styles.factorScore, { color: getScoreColor(item.avgScore) }]}>
-                  {item.avgScore} átlagpont
+                  {item.avgScore} {t('averagePoints')}
                 </Text>
               </View>
             </View>
@@ -119,13 +125,13 @@ export const MonthlyChart: React.FC<MonthlyChartProps> = ({ sessions }) => {
 
       {/* Quick advice */}
       <View style={styles.insightBox}>
-        <Text style={styles.insightTitle}>💡 Havi Összegzés</Text>
+        <Text style={styles.insightTitle}>{t('monthlyInsightTitle')}</Text>
         <Text style={styles.insightText}>
           {avgScore < 35
-            ? 'Kitűnő eredmény! A horkolása az elmúlt hónapban az egészséges, alacsony tartományban maradt.'
+            ? t('monthlyInsightGreat')
             : avgScore < 65
-            ? 'Mérsékelt horkolás tapasztalható. Az oldalfekvés és a hálószoba párásítása jelentősen csökkentheti az értékeket.'
-            : 'Fokozott horkolási szint. Érdemes figyelni az alvási pozícióra és az esti szokásokra.'}
+            ? t('monthlyInsightModerate')
+            : t('monthlyInsightSevere')}
         </Text>
       </View>
     </View>

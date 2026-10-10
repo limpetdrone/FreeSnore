@@ -14,9 +14,10 @@ import { HistoryScreen } from './src/screens/HistoryScreen';
 import { SessionDetailScreen } from './src/screens/SessionDetailScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SleepSession } from './src/types/session';
-import { getSessions } from './src/services/storage';
+import { getSessions, getSettings } from './src/services/storage';
 import { initNotifications } from './src/services/notificationService';
 import { COLORS } from './src/constants/theme';
+import { t, getLanguage, setLanguage, Language } from './src/i18n';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<'record' | 'history' | 'settings'>('record');
@@ -24,6 +25,7 @@ export default function App() {
   const [selectedSession, setSelectedSession] = useState<SleepSession | null>(null);
   // Cannot switch tabs during active tracking: unmounting RecordScreen would detach the audio pipeline
   const [isTracking, setIsTracking] = useState(false);
+  const [, setLanguageState] = useState<Language>(getLanguage());
 
   const loadData = async () => {
     const data = await getSessions();
@@ -33,6 +35,12 @@ export default function App() {
   useEffect(() => {
     loadData();
     initNotifications();
+    getSettings().then((s) => {
+      if (s.language) {
+        setLanguage(s.language);
+        setLanguageState(s.language);
+      }
+    });
   }, []);
 
   // Android hardware back button: navigate back from detail view to history list
@@ -70,7 +78,9 @@ export default function App() {
             </View>
             <View style={styles.sessionCountBadge}>
               <Ionicons name="bed-outline" size={14} color={COLORS.textSecondary} />
-              <Text style={styles.sessionCountText}>{sessions.length} éjszaka</Text>
+              <Text style={styles.sessionCountText}>
+                {t('nightsCount', { count: sessions.length })}
+              </Text>
             </View>
           </View>
         )}
@@ -95,7 +105,7 @@ export default function App() {
               onRefresh={loadData}
             />
           ) : (
-            <SettingsScreen />
+            <SettingsScreen onLanguageChange={setLanguageState} />
           )}
         </View>
 
@@ -118,7 +128,7 @@ export default function App() {
                   currentTab === 'record' && styles.tabLabelActive,
                 ]}
               >
-                Figyelés
+                {t('tabRecord')}
               </Text>
             </TouchableOpacity>
 
@@ -141,7 +151,7 @@ export default function App() {
                   currentTab === 'history' && styles.tabLabelActive,
                 ]}
               >
-                Előzmények
+                {t('tabHistory')}
               </Text>
             </TouchableOpacity>
 
@@ -161,7 +171,7 @@ export default function App() {
                   currentTab === 'settings' && styles.tabLabelActive,
                 ]}
               >
-                Beállítások
+                {t('tabSettings')}
               </Text>
             </TouchableOpacity>
           </View>

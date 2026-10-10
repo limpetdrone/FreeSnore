@@ -14,6 +14,8 @@ import { SnoreTimelineChart } from '../components/SnoreTimelineChart';
 import { ClipPlayer } from '../components/ClipPlayer';
 import { COLORS } from '../constants/theme';
 import { deleteSession } from '../services/storage';
+import { generateAndSharePdfReport } from '../services/pdfReportGenerator';
+import { t, getLanguage } from '../i18n';
 
 interface SessionDetailScreenProps {
   session: SleepSession;
@@ -27,6 +29,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
   onDeleted,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'clips'>('overview');
+  const [isExporting, setIsExporting] = useState(false);
 
   const startDate = new Date(session.startTime);
   const endDate = new Date(session.endTime);
@@ -35,7 +38,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
     `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 
   const formatDate = (d: Date) =>
-    d.toLocaleDateString('hu-HU', {
+    d.toLocaleDateString(getLanguage() === 'hu' ? 'hu-HU' : 'en-US', {
       month: 'short',
       day: 'numeric',
       weekday: 'short',
@@ -49,12 +52,12 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
 
   const handleDelete = () => {
     Alert.alert(
-      'Munkamenet törlése',
-      'Biztosan törölni szeretnéd ezt a mentett alváselemzést és a hozzá tartozó hangfelvételeket?',
+      t('deleteSessionTitle'),
+      t('deleteSessionPrompt'),
       [
-        { text: 'Mégse', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Törlés',
+          text: t('deleteAction'),
           style: 'destructive',
           onPress: async () => {
             await deleteSession(session.id);
@@ -64,6 +67,12 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
         },
       ]
     );
+  };
+
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    await generateAndSharePdfReport(session);
+    setIsExporting(false);
   };
 
   return (
@@ -76,12 +85,21 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
         <View style={styles.headerTitleBox}>
           <Text style={styles.headerTitle}>{formatDate(startDate)}</Text>
           <Text style={styles.headerSubtitle}>
-            {formatTime(startDate)} - {formatTime(endDate)} ({totalHours}ó {totalMins}p)
+            {formatTime(startDate)} - {formatTime(endDate)} ({totalHours}h {totalMins}m)
           </Text>
         </View>
-        <TouchableOpacity style={styles.iconBtn} onPress={handleDelete}>
-          <Ionicons name="trash-outline" size={20} color={COLORS.error} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={[styles.iconBtn, { marginRight: 4 }]}
+            onPress={handleExportPdf}
+            disabled={isExporting}
+          >
+            <Ionicons name="document-text-outline" size={22} color={COLORS.primaryLight} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tabs */}
@@ -91,7 +109,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
           onPress={() => setActiveTab('overview')}
         >
           <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
-            Elemzés & Idővonal
+            {t('sessionDetailOverviewTab')}
           </Text>
         </TouchableOpacity>
 
@@ -100,7 +118,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
           onPress={() => setActiveTab('clips')}
         >
           <Text style={[styles.tabText, activeTab === 'clips' && styles.activeTabText]}>
-            Hangfelvételek ({session.clips?.length || 0})
+            {t('sessionDetailClipsTab', { count: session.clips?.length || 0 })}
           </Text>
         </TouchableOpacity>
       </View>
@@ -110,38 +128,63 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
           <>
             {/* Score Card */}
             <View style={styles.card}>
-              <ScoreGauge score={session.snoreScore} size={150} />
+              <ScoreGauge score={session.snoreScore} size={150} label={t('snoreScoreLabel')} />
 
               <View style={styles.statsGrid}>
                 <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>Összes alvásidő</Text>
+                  <Text style={styles.statLabel}>{t('totalSleepTime')}</Text>
                   <Text style={styles.statValue}>
-                    {totalHours}ó {totalMins}p
+                    {totalHours}h {totalMins}m
                   </Text>
                 </View>
 
                 <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>Horkolási idő</Text>
+                  <Text style={styles.statLabel}>{t('snoreDuration')}</Text>
                   <Text style={[styles.statValue, { color: COLORS.loud }]}>
-                    {snoreHours > 0 ? `${snoreHours}ó ` : ''}
-                    {snoreMins}p
+                    {snoreHours > 0 ? `${snoreHours}h ` : ''}
+                    {snoreMins}m
                   </Text>
                 </View>
 
                 <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>Csúcs hangerő</Text>
+                  <Text style={styles.statLabel}>{t('peakLoudness')}</Text>
                   <Text style={styles.statValue}>{session.peakDb} dB</Text>
                 </View>
 
                 <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>Elalvási késleltetés</Text>
-                  <Text style={styles.statValue}>{session.delayMinutes} perc</Text>
+                  <Text style={styles.statLabel}>{t('delayLabel')}</Text>
+                  <Text style={styles.statValue}>
+                    {session.delayMinutes} {t('minutesSuffix')}
+                  </Text>
                 </View>
               </View>
 
+              {/* Apnea Warning Alert if detected */}
+              {session.apneaSuspectCount !== undefined && session.apneaSuspectCount > 0 && (
+                <View style={styles.apneaCard}>
+                  <View style={styles.apneaHeader}>
+                    <Ionicons name="warning" size={18} color="#F59E0B" />
+                    <Text style={styles.apneaTitle}>{t('apneaWarningTitle')}</Text>
+                  </View>
+                  <Text style={styles.apneaText}>
+                    {t('apneaWarningBody', { count: session.apneaSuspectCount })}
+                  </Text>
+                </View>
+              )}
+
+              {/* Nudge feedback if triggered */}
+              {session.nudgesTriggered !== undefined && session.nudgesTriggered > 0 && (
+                <View style={styles.nudgeBadgeBox}>
+                  <Ionicons name="pulse" size={14} color={COLORS.accent} />
+                  <Text style={styles.nudgeBadgeText}>
+                    {t('nudgeApplied', { count: session.nudgesTriggered })}
+                  </Text>
+                </View>
+              )}
+
               {/* Intensity progress distribution bar */}
               <View style={styles.distributionContainer}>
-                <Text style={styles.sectionHeading}>Horkolási intenzitás megoszlása</Text>
+                <Text style={styles.sectionHeading}>{t('intensityDistribution')}</Text>
                 <View style={styles.multiBar}>
                   {session.quietPercent > 0 && (
                     <View style={{ flex: session.quietPercent, backgroundColor: COLORS.quiet }} />
@@ -159,16 +202,16 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
 
                 <View style={styles.percentLegend}>
                   <Text style={styles.percentText}>
-                    <Text style={{ color: COLORS.quiet }}>● Csendes: {session.quietPercent}%</Text>
+                    <Text style={{ color: COLORS.quiet }}>● {t('levelQuiet')}: {session.quietPercent}%</Text>
                   </Text>
                   <Text style={styles.percentText}>
-                    <Text style={{ color: COLORS.light }}>● Halk: {session.lightPercent}%</Text>
+                    <Text style={{ color: COLORS.light }}>● {t('levelLight')}: {session.lightPercent}%</Text>
                   </Text>
                   <Text style={styles.percentText}>
-                    <Text style={{ color: COLORS.loud }}>● Hangos: {session.loudPercent}%</Text>
+                    <Text style={{ color: COLORS.loud }}>● {t('levelLoud')}: {session.loudPercent}%</Text>
                   </Text>
                   <Text style={styles.percentText}>
-                    <Text style={{ color: COLORS.epic }}>● Erős: {session.epicPercent}%</Text>
+                    <Text style={{ color: COLORS.epic }}>● {t('levelEpic')}: {session.epicPercent}%</Text>
                   </Text>
                 </View>
               </View>
@@ -176,17 +219,15 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
 
             {/* Timeline */}
             <View style={styles.card}>
-              <Text style={styles.sectionHeading}>Éjszakai zaj-idővonal (Snore Profile)</Text>
-              <Text style={styles.hintText}>
-                Koppints az oszlopokra a pontos időpont és hangerő megtekintéséhez.
-              </Text>
+              <Text style={styles.sectionHeading}>{t('nightNoiseTimeline')}</Text>
+              <Text style={styles.hintText}>{t('timelineHint')}</Text>
               <SnoreTimelineChart timeline={session.timeline} />
             </View>
 
             {/* Factors */}
             {session.factors && session.factors.length > 0 && (
               <View style={styles.card}>
-                <Text style={styles.sectionHeading}>Kiváltó tényezők és szokások</Text>
+                <Text style={styles.sectionHeading}>{t('habitsAndRemedies')}</Text>
                 <View style={styles.chipRow}>
                   {session.factors.map((factor, idx) => (
                     <View key={idx} style={styles.chip}>
@@ -196,21 +237,25 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
                 </View>
               </View>
             )}
+
+            {/* Export PDF Button Card */}
+            <TouchableOpacity style={styles.pdfExportBtn} onPress={handleExportPdf} activeOpacity={0.8}>
+              <Ionicons name="document-text" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.pdfExportBtnText}>{t('exportPdfBtn')}</Text>
+            </TouchableOpacity>
           </>
         ) : (
           /* Audio Clips tab */
           <View style={styles.card}>
-            <Text style={styles.sectionHeading}>Rögzített horkolási minták</Text>
-            <Text style={styles.hintText}>
-              A detektált horkolásokból rögzített hangminták visszahallgatása.
-            </Text>
+            <Text style={styles.sectionHeading}>{t('recordedClipsTitle')}</Text>
+            <Text style={styles.hintText}>{t('recordedClipsHint')}</Text>
 
             {session.clips && session.clips.length > 0 ? (
               session.clips.map((clip) => <ClipPlayer key={clip.id} clip={clip} />)
             ) : (
               <View style={styles.emptyClipsBox}>
                 <Ionicons name="volume-mute-outline" size={40} color={COLORS.textMuted} />
-                <Text style={styles.emptyClipsText}>Nem történt rögzített hangminta</Text>
+                <Text style={styles.emptyClipsText}>{t('noClips')}</Text>
               </View>
             )}
           </View>
@@ -250,6 +295,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   tabsRow: {
     flexDirection: 'row',
@@ -307,6 +356,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
+  apneaCard: {
+    backgroundColor: '#78350F25',
+    borderWidth: 1,
+    borderColor: '#D97706',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  apneaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  apneaTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FBBF24',
+  },
+  apneaText: {
+    fontSize: 11,
+    color: '#FDE68A',
+    lineHeight: 16,
+  },
+  nudgeBadgeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.surfaceHighlight,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  nudgeBadgeText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
   distributionContainer: {
     marginTop: 8,
     borderTopWidth: 1,
@@ -360,6 +449,20 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontSize: 12,
     fontWeight: '500',
+  },
+  pdfExportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primaryDark,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginBottom: 20,
+  },
+  pdfExportBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   emptyClipsBox: {
     alignItems: 'center',

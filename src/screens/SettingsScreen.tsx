@@ -11,35 +11,75 @@ import { Ionicons } from '@expo/vector-icons';
 import { getSettings, saveSettings, DEFAULT_SETTINGS } from '../services/storage';
 import { AppSettings } from '../types/session';
 import { COLORS } from '../constants/theme';
+import { t, setLanguage, Language } from '../i18n';
 
-export const SettingsScreen: React.FC = () => {
+interface SettingsScreenProps {
+  onLanguageChange?: (lang: Language) => void;
+}
+
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange }) => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
-    getSettings().then(setSettings);
+    getSettings().then((s) => {
+      setSettings(s);
+      setLanguage(s.language || 'hu');
+    });
   }, []);
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     const updated = { ...settings, [key]: value };
     setSettings(updated);
     saveSettings(updated);
+    if (key === 'language') {
+      setLanguage(value as Language);
+      onLanguageChange?.(value as Language);
+    }
   };
 
   const delayPresets = [0, 5, 10, 15, 20, 30, 45];
+  const nudgeThresholds = [50, 56, 62];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      <Text style={styles.screenTitle}>Beállítások</Text>
+      <Text style={styles.screenTitle}>{t('settingsTitle')}</Text>
+
+      {/* Language Section */}
+      <View style={styles.card}>
+        <View style={styles.cardRow}>
+          <Ionicons name="language-outline" size={20} color={COLORS.cyan} />
+          <Text style={styles.cardTitle}>{t('languageSectionTitle')}</Text>
+        </View>
+        <Text style={styles.cardDesc}>{t('languageSectionDesc')}</Text>
+
+        <View style={styles.chipsRow}>
+          <TouchableOpacity
+            style={[styles.chip, settings.language === 'hu' && styles.chipActive]}
+            onPress={() => updateSetting('language', 'hu')}
+          >
+            <Text style={[styles.chipText, settings.language === 'hu' && styles.chipTextActive]}>
+              🇭🇺 {t('langHu')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.chip, settings.language === 'en' && styles.chipActive]}
+            onPress={() => updateSetting('language', 'en')}
+          >
+            <Text style={[styles.chipText, settings.language === 'en' && styles.chipTextActive]}>
+              🇬🇧 {t('langEn')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Default delay section */}
       <View style={styles.card}>
         <View style={styles.cardRow}>
           <Ionicons name="timer-outline" size={20} color={COLORS.primaryLight} />
-          <Text style={styles.cardTitle}>Alapértelmezett Elalvási Késleltetés</Text>
+          <Text style={styles.cardTitle}>{t('defaultDelayTitle')}</Text>
         </View>
-        <Text style={styles.cardDesc}>
-          A felvétel indítását követő várakozási idő az elalvás megkönnyítésére.
-        </Text>
+        <Text style={styles.cardDesc}>{t('defaultDelayDesc')}</Text>
 
         <View style={styles.chipsRow}>
           {delayPresets.map((m) => (
@@ -57,7 +97,7 @@ export const SettingsScreen: React.FC = () => {
                   settings.startDelayMinutes === m && styles.chipTextActive,
                 ]}
               >
-                {m === 0 ? 'Azonnal' : `${m} perc`}
+                {m === 0 ? t('immediate') : `${m} ${t('minutesSuffix')}`}
               </Text>
             </TouchableOpacity>
           ))}
@@ -67,12 +107,10 @@ export const SettingsScreen: React.FC = () => {
       {/* Sensitivity section */}
       <View style={styles.card}>
         <View style={styles.cardRow}>
-          <Ionicons name="disc-outline" size={20} color={COLORS.cyan} />
-          <Text style={styles.cardTitle}>Mikrofon Érzékenység</Text>
+          <Ionicons name="disc-outline" size={20} color={COLORS.accent} />
+          <Text style={styles.cardTitle}>{t('sensitivityTitle')}</Text>
         </View>
-        <Text style={styles.cardDesc}>
-          Állítsd be, hogy milyen küszöbérték felett minősüljön a hang horkolásnak.
-        </Text>
+        <Text style={styles.cardDesc}>{t('sensitivityDesc')}</Text>
 
         <View style={styles.chipsRow}>
           {(['low', 'medium', 'high'] as const).map((sens) => (
@@ -90,21 +128,63 @@ export const SettingsScreen: React.FC = () => {
                   settings.sensitivity === sens && styles.chipTextActive,
                 ]}
               >
-                {sens === 'low' ? 'Alacsony (52+ dB)' : sens === 'medium' ? 'Közepes (44+ dB)' : 'Magas (38+ dB)'}
+                {sens === 'low' ? t('sensLow') : sens === 'medium' ? t('sensMed') : t('sensHigh')}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
+      {/* Anti-Snore Nudge section */}
+      <View style={styles.card}>
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+              <Ionicons name="pulse" size={16} color={COLORS.accent} />
+              <Text style={styles.switchLabel}>{t('antiSnoreNudgeTitle')}</Text>
+            </View>
+            <Text style={styles.switchDesc}>{t('antiSnoreNudgeDesc')}</Text>
+          </View>
+          <Switch
+            value={settings.antiSnoreNudge}
+            onValueChange={(val) => updateSetting('antiSnoreNudge', val)}
+            trackColor={{ false: COLORS.surfaceHighlight, true: COLORS.accent }}
+          />
+        </View>
+
+        {settings.antiSnoreNudge && (
+          <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 10 }}>
+            <Text style={[styles.cardDesc, { marginBottom: 8 }]}>
+              {settings.language === 'hu' ? 'Aktiválási küszöb:' : 'Trigger threshold:'}
+            </Text>
+            <View style={styles.chipsRow}>
+              {nudgeThresholds.map((th) => (
+                <TouchableOpacity
+                  key={th}
+                  style={[styles.chip, settings.nudgeThresholdDb === th && styles.chipActive]}
+                  onPress={() => updateSetting('nudgeThresholdDb', th)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      settings.nudgeThresholdDb === th && styles.chipTextActive,
+                    ]}
+                  >
+                    {th} dB {th === 50 ? '(Sensitive)' : th === 56 ? '(Standard)' : '(Loud only)'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
+
       {/* Toggles */}
       <View style={styles.card}>
         <View style={styles.switchRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={styles.switchLabel}>Képernyő ébrentartása (Keep Awake)</Text>
-            <Text style={styles.switchDesc}>
-              Megakadályozza a telefon lezárását a felvétel alatt.
-            </Text>
+            <Text style={styles.switchLabel}>{t('keepAwakeTitle')}</Text>
+            <Text style={styles.switchDesc}>{t('keepAwakeDesc')}</Text>
           </View>
           <Switch
             value={settings.keepAwake}
@@ -115,10 +195,8 @@ export const SettingsScreen: React.FC = () => {
 
         <View style={[styles.switchRow, { borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12, marginTop: 12 }]}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={styles.switchLabel}>Horkolási hangminták mentése</Text>
-            <Text style={styles.switchDesc}>
-              Hangminták visszahallgatása a reggeli kiértékelésben.
-            </Text>
+            <Text style={styles.switchLabel}>{t('saveClipsTitle')}</Text>
+            <Text style={styles.switchDesc}>{t('saveClipsDesc')}</Text>
           </View>
           <Switch
             value={settings.saveAudioClips}
@@ -130,12 +208,12 @@ export const SettingsScreen: React.FC = () => {
 
       {/* About & TestFlight Info */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>TestFlight & Alkalmazás Infó</Text>
-        <Text style={styles.infoLine}>Verzió: 1.0.0 (Build 1)</Text>
+        <Text style={styles.cardTitle}>{t('aboutTitle')}</Text>
+        <Text style={styles.infoLine}>{t('versionLabel')}: 1.0.0 (Build 1)</Text>
         <Text style={styles.infoLine}>Bundle ID: com.limpetdrone.freesnore</Text>
-        <Text style={styles.infoLine}>Platform: iOS (TestFlight) & Android</Text>
+        <Text style={styles.infoLine}>{t('platformLabel')}: iOS (TestFlight) & Android</Text>
         <Text style={[styles.infoLine, { marginTop: 6, color: COLORS.textMuted }]}>
-          A FreeSnore a SnoreLabhez hasonló fejlett akusztikai kiértékelést nyújt nyílt, ingyenes formában.
+          FreeSnore is a private, open-source snore tracker providing clinical-grade acoustic metrics.
         </Text>
       </View>
     </ScrollView>

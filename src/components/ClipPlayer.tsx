@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Sharing from 'expo-sharing';
 import { SnoreClip } from '../types/session';
 import { sleepMonitor } from '../services/audioService';
 import { COLORS, SNORE_LEVELS } from '../constants/theme';
+import { t } from '../i18n';
 
 interface ClipPlayerProps {
   clip: SnoreClip;
@@ -27,6 +29,25 @@ export const ClipPlayer: React.FC<ClipPlayerProps> = ({ clip, onPlayingChange })
     isPlayingRef.current = false;
     setIsPlaying(false);
     onPlayingChange?.(false);
+  };
+
+  const handleShareClip = async () => {
+    if (!clip.audioUri || !clip.audioUri.startsWith('file://')) {
+      Alert.alert(t('saveErrorTitle'), t('noAudioFile'));
+      return;
+    }
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert(t('saveErrorTitle'), 'Sharing is not available on this device');
+      return;
+    }
+    try {
+      await Sharing.shareAsync(clip.audioUri, {
+        dialogTitle: `${t('appTitle')} - ${clip.peakDb} dB`,
+      });
+    } catch (e) {
+      console.warn('Share error:', e);
+    }
   };
 
   const handleTogglePlay = async () => {
@@ -107,7 +128,12 @@ export const ClipPlayer: React.FC<ClipPlayerProps> = ({ clip, onPlayingChange })
               />
             ))}
           </View>
-          <Text style={styles.durationText}>{clip.durationSeconds}s</Text>
+          <View style={styles.rightActions}>
+            <Text style={styles.durationText}>{clip.durationSeconds}s</Text>
+            <TouchableOpacity style={styles.shareBtn} onPress={handleShareClip}>
+              <Ionicons name="share-outline" size={16} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
@@ -176,5 +202,13 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 11,
     fontWeight: '500',
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shareBtn: {
+    padding: 4,
   },
 });

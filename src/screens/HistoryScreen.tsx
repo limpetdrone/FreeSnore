@@ -11,6 +11,7 @@ import { SleepSession } from '../types/session';
 import { WeeklyChart } from '../components/WeeklyChart';
 import { MonthlyChart } from '../components/MonthlyChart';
 import { COLORS } from '../constants/theme';
+import { t, getLanguage } from '../i18n';
 
 interface HistoryScreenProps {
   sessions: SleepSession[];
@@ -21,7 +22,6 @@ interface HistoryScreenProps {
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   sessions,
   onSelectSession,
-  onRefresh,
 }) => {
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
@@ -34,7 +34,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
-    return d.toLocaleDateString('hu-HU', {
+    return d.toLocaleDateString(getLanguage() === 'hu' ? 'hu-HU' : 'en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -64,15 +64,15 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             <View style={styles.detailItem}>
               <Ionicons name="time-outline" size={13} color={COLORS.textMuted} />
               <Text style={styles.detailText}>
-                {hrs}ó {mins}p alvás
+                {hrs}h {mins}m {t('sleepLabel')}
               </Text>
             </View>
 
             <View style={styles.detailItem}>
               <Ionicons name="volume-medium-outline" size={13} color={COLORS.loud} />
               <Text style={[styles.detailText, { color: COLORS.loud }]}>
-                {snoreHrs > 0 ? `${snoreHrs}ó ` : ''}
-                {snoreMins}p horkolás
+                {snoreHrs > 0 ? `${snoreHrs}h ` : ''}
+                {snoreMins}m {t('snoreLabel')}
               </Text>
             </View>
           </View>
@@ -89,17 +89,26 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
               )}
             </View>
           )}
+
+          {item.apneaSuspectCount !== undefined && item.apneaSuspectCount > 0 && (
+            <View style={styles.apneaIndicatorRow}>
+              <Ionicons name="warning" size={12} color="#F59E0B" />
+              <Text style={styles.apneaIndicatorText}>
+                {t('apneaIndicator', { count: item.apneaSuspectCount })}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.cardRight}>
           <View style={[styles.scoreBadge, { borderColor: scoreCol }]}>
             <Text style={[styles.scoreNum, { color: scoreCol }]}>{item.snoreScore}</Text>
-            <Text style={styles.scoreLbl}>Pont</Text>
+            <Text style={styles.scoreLbl}>{t('points')}</Text>
           </View>
 
           <View style={styles.clipsBadge}>
             <Ionicons name="mic-outline" size={12} color={COLORS.textMuted} />
-            <Text style={styles.clipsCount}>{item.clips?.length || 0} minta</Text>
+            <Text style={styles.clipsCount}>{item.clips?.length || 0} {t('samplesSuffix')}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -117,7 +126,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           <Text
             style={[styles.segmentText, viewMode === 'daily' && styles.segmentTextActive]}
           >
-            Napi Bontás
+            {t('historyDaily')}
           </Text>
         </TouchableOpacity>
 
@@ -128,7 +137,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           <Text
             style={[styles.segmentText, viewMode === 'weekly' && styles.segmentTextActive]}
           >
-            Heti Bontás
+            {t('historyWeekly')}
           </Text>
         </TouchableOpacity>
 
@@ -139,7 +148,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           <Text
             style={[styles.segmentText, viewMode === 'monthly' && styles.segmentTextActive]}
           >
-            Havi Bontás
+            {t('historyMonthly')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -148,17 +157,15 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         {viewMode === 'daily' && (
           <View>
             <View style={styles.listHeaderRow}>
-              <Text style={styles.sectionHeader}>Rögzített éjszakák ({sessions.length})</Text>
-              <Text style={styles.hintHeader}>Részletekhez és hangokhoz koppints</Text>
+              <Text style={styles.sectionHeader}>{t('recordedNights', { count: sessions.length })}</Text>
+              <Text style={styles.hintHeader}>{t('historyTapHint')}</Text>
             </View>
 
             {sessions.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="moon-outline" size={48} color={COLORS.textMuted} />
-                <Text style={styles.emptyTitle}>Még nincsenek rögzített éjszakák</Text>
-                <Text style={styles.emptySub}>
-                  Indíts el egy alvásfigyelést az új felvétel készítéséhez.
-                </Text>
+                <Text style={styles.emptyTitle}>{t('noRecordedNights')}</Text>
+                <Text style={styles.emptySub}>{t('noRecordedNightsSub')}</Text>
               </View>
             ) : (
               sessions.map((s) => renderDailySessionItem(s))
@@ -171,7 +178,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             <WeeklyChart sessions={sessions} />
 
             <Text style={[styles.sectionHeader, { marginTop: 16 }]}>
-              A hét rögzített éjszakái
+              {t('weekNightsList')}
             </Text>
             {sessions.slice(0, 7).map((s) => renderDailySessionItem(s))}
           </View>
@@ -182,7 +189,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             <MonthlyChart sessions={sessions} />
 
             <Text style={[styles.sectionHeader, { marginTop: 16 }]}>
-              Havi éjszakák listája
+              {t('recordedNights', { count: sessions.length })}
             </Text>
             {sessions.slice(0, 15).map((s) => renderDailySessionItem(s))}
           </View>
@@ -292,6 +299,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+  },
+  apneaIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  apneaIndicatorText: {
+    fontSize: 10,
+    color: '#F59E0B',
+    fontWeight: '600',
   },
   cardRight: {
     alignItems: 'center',

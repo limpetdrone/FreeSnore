@@ -15,9 +15,10 @@ import * as Haptics from 'expo-haptics';
 import { sleepMonitor, LiveAudioStatus } from '../services/audioService';
 import { calculateSnoreStats } from '../services/scoreCalculator';
 import { saveSession, getSettings, DEFAULT_SETTINGS } from '../services/storage';
-import { AppSettings, SleepSession } from '../types/session';
+import { SleepSession, AppSettings } from '../types/session';
 import { COLORS, SNORE_LEVELS } from '../constants/theme';
 import { showTrackingNotification, dismissTrackingNotification } from '../services/notificationService';
+import { t } from '../i18n';
 
 interface RecordScreenProps {
   onSessionFinished: (session: SleepSession) => void;
@@ -25,16 +26,24 @@ interface RecordScreenProps {
 }
 
 const DELAY_OPTIONS = [0, 5, 10, 15, 20, 30, 45];
-const FACTOR_PRESETS = [
-  'Hanyatt alvás',
-  'Oldalfekvés',
-  'Alkohol',
-  'Késői vacsora',
-  'Orrdugulás',
-  'Orrspray / tapasz',
-  'Fáradtság',
-  'Párásító',
-];
+
+const AGGRAVATING_KEYS = [
+  'factorBackSleep',
+  'factorAlcohol',
+  'factorLateMeal',
+  'factorBlockedNose',
+  'factorFatigue',
+  'factorStress',
+] as const;
+
+const REMEDY_KEYS = [
+  'factorSideSleep',
+  'remedyNasalStrips',
+  'remedyMouthguard',
+  'remedyHumidifier',
+  'remedyElevatedPillow',
+  'remedyNasalSpray',
+] as const;
 
 const SENSITIVITY_MIN_DB: Record<AppSettings['sensitivity'], number> = {
   low: 52,
@@ -51,7 +60,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [selectedDelay, setSelectedDelay] = useState<number>(DEFAULT_SETTINGS.startDelayMinutes);
   const [countdownRemainingSec, setCountdownRemainingSec] = useState<number>(0);
-  const [selectedFactors, setSelectedFactors] = useState<string[]>(['Oldalfekvés']);
+  const [selectedFactors, setSelectedFactors] = useState<string[]>([t('factorSideSleep')]);
   const [nightClockMode, setNightClockMode] = useState<boolean>(false);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>(() => formatClock(new Date()));
 
@@ -63,12 +72,11 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     snoringSeconds: 0,
   });
 
-  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const clockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownTimerRef = useRef<any>(null);
+  const clockTimerRef = useRef<any>(null);
   const isAppActiveRef = useRef<boolean>(true);
 
   useEffect(() => {
-    // Load default delay from settings
     getSettings().then((s) => {
       setSettings(s);
       setSelectedDelay(s.startDelayMinutes);
@@ -142,14 +150,13 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         minSnoreDb: SENSITIVITY_MIN_DB[settings.sensitivity],
         maxClips: settings.maxClipsPerSession,
         saveAudio: settings.saveAudioClips,
+        antiSnoreNudge: settings.antiSnoreNudge,
+        nudgeThresholdDb: settings.nudgeThresholdDb,
       }
     );
 
     if (!started) {
-      Alert.alert(
-        'Mikrofon hiba',
-        'Nem sikerült hozzáférni a mikrofonhoz. Kérlek engedélyezd a mikrofonhasználatot a beállításokban!'
-      );
+      Alert.alert(t('micErrorTitle'), t('micErrorBody'));
       deactivateKeepAwake();
       return;
     }
@@ -160,7 +167,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     }
 
     setTrackingState('countdown');
-    showTrackingNotification(`${selectedDelay} perc múlva indul`, 'Elalvási késleltetés aktív');
+    showTrackingNotification(`${selectedDelay} ${t('minutesSuffix')}`, t('countdownTitle'));
 
     // Deadline-based countdown: background timers may throttle, but wall-clock calculation stays exact
     const tick = () => {
@@ -190,12 +197,12 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
 
   const stopAndFinishSession = async () => {
     Alert.alert(
-      'Alvás befejezése',
-      'Szeretnéd leállítani a figyelést és megtekinteni a kiértékelést?',
+      t('finishSleepPromptTitle'),
+      t('finishSleepPromptBody'),
       [
-        { text: 'Folytatás', style: 'cancel' },
+        { text: t('continueTracking'), style: 'cancel' },
         {
-          text: 'Befejezés',
+          text: t('finishAction'),
           style: 'default',
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -223,12 +230,14 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
               timeline: result.timeline,
               clips: result.clips,
               factors: selectedFactors,
+              apneaSuspectCount: result.apneaSuspectCount,
+              nudgesTriggered: result.nudgesTriggered,
             };
 
             try {
               await saveSession(session);
             } catch {
-              Alert.alert('Mentési hiba', 'Nem sikerült elmenteni az éjszaka adatait.');
+              Alert.alert(t('saveErrorTitle'), t('saveErrorBody'));
             }
             setTrackingState('idle');
             onSessionFinished(session);
@@ -249,9 +258,9 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     if (hrs > 0) {
-      return `${hrs}ó ${mins}p ${secs}mp`;
+      return `${hrs}h ${mins}m ${secs}s`;
     }
-    return `${mins}p ${secs}mp`;
+    return `${mins}m ${secs}s`;
   };
 
   // --- RENDERING VIEWS ---
@@ -262,10 +271,10 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
       <View style={styles.nightClockContainer}>
         <Text style={styles.nightClockTime}>{currentTimeStr}</Text>
         <Text style={styles.nightClockStatus}>
-          Figyelés aktív • {liveStatus.currentDb} dB ({SNORE_LEVELS[liveStatus.category]?.label})
+          {t('nightClockMonitoring')} • {liveStatus.currentDb} dB ({SNORE_LEVELS[liveStatus.category]?.label})
         </Text>
         <Text style={styles.nightClockElapsed}>
-          Alvásidő: {formatDuration(liveStatus.durationSeconds)}
+          {t('nightClockElapsed')}: {formatDuration(liveStatus.durationSeconds)}
         </Text>
 
         <TouchableOpacity
@@ -273,7 +282,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
           onPress={() => setNightClockMode(false)}
         >
           <Ionicons name="sunny-outline" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.nightClockDismissText}>Kijelző visszaállítása</Text>
+          <Text style={styles.nightClockDismissText}>{t('nightClockRestore')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -287,19 +296,19 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
           <View style={styles.iconCirclePulse}>
             <Ionicons name="moon" size={48} color={COLORS.primaryLight} />
           </View>
-          <Text style={styles.countdownTitle}>Elalvási Késleltetés</Text>
-          <Text style={styles.countdownSub}>A tényleges hangfelvétel ennyi idő múlva kezdődik:</Text>
+          <Text style={styles.countdownTitle}>{t('countdownTitle')}</Text>
+          <Text style={styles.countdownSub}>{t('countdownSub')}</Text>
 
           <Text style={styles.timerDisplay}>{formatCountdown(countdownRemainingSec)}</Text>
 
           <View style={styles.countdownActions}>
             <TouchableOpacity style={styles.primaryButton} onPress={skipCountdown}>
               <Ionicons name="flash" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.primaryButtonText}>Azonnali indítás</Text>
+              <Text style={styles.primaryButtonText}>{t('skipCountdown')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.secondaryButton} onPress={cancelTracking}>
-              <Text style={styles.secondaryButtonText}>Mégse</Text>
+              <Text style={styles.secondaryButtonText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -316,7 +325,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         <ScrollView contentContainerStyle={styles.recordingScroll}>
           <View style={styles.recordingHeader}>
             <View style={styles.recordingDot} />
-            <Text style={styles.recordingStatusText}>Alvás és Horkolás Figyelése...</Text>
+            <Text style={styles.recordingStatusText}>{t('monitoringActive')}</Text>
           </View>
 
           {/* Live Sound Meter Card */}
@@ -365,21 +374,21 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
           <View style={styles.statsCard}>
             <View style={styles.metricRow}>
               <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>Eltelt alvásidő</Text>
+                <Text style={styles.metricLabel}>{t('elapsedSleepTime')}</Text>
                 <Text style={styles.metricValue}>
                   {formatDuration(liveStatus.durationSeconds)}
                 </Text>
               </View>
 
               <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>Horkolási idő</Text>
+                <Text style={styles.metricLabel}>{t('snoringTime')}</Text>
                 <Text style={[styles.metricValue, { color: COLORS.loud }]}>
                   {formatDuration(liveStatus.snoringSeconds)}
                 </Text>
               </View>
 
               <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>Csúcs hangerő</Text>
+                <Text style={styles.metricLabel}>{t('peakLoudness')}</Text>
                 <Text style={styles.metricValue}>{liveStatus.peakDb} dB</Text>
               </View>
             </View>
@@ -391,7 +400,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
             onPress={() => setNightClockMode(true)}
           >
             <Ionicons name="moon-outline" size={20} color={COLORS.textSecondary} />
-            <Text style={styles.nightModeBtnText}>Éjszakai sötétített óra mód</Text>
+            <Text style={styles.nightModeBtnText}>{t('nightClockModeBtn')}</Text>
           </TouchableOpacity>
 
           {/* Stop session button */}
@@ -400,35 +409,31 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
             onPress={stopAndFinishSession}
           >
             <Ionicons name="stop" size={22} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={styles.stopButtonText}>Ébredés / Elemzés Befejezése</Text>
+            <Text style={styles.stopButtonText}>{t('finishSleepBtn')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
     );
   }
 
-  // 4. IDLE / SETUP VIEW (Delay, Factors, Start button)
+  // 4. IDLE / SETUP VIEW (Delay, Factors & Remedies, Start button)
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.idleScroll}>
       <View style={styles.heroSection}>
         <View style={styles.moonBadge}>
           <Ionicons name="bed" size={28} color={COLORS.primaryLight} />
         </View>
-        <Text style={styles.title}>FreeSnore Figyelés</Text>
-        <Text style={styles.subtitle}>
-          Helyezd a telefont az éjjeliszekrényre, a mikrofonnal az ágy felé.
-        </Text>
+        <Text style={styles.title}>{t('recordHeroTitle')}</Text>
+        <Text style={styles.subtitle}>{t('recordHeroSubtitle')}</Text>
       </View>
 
       {/* Delay selection card */}
       <View style={styles.setupCard}>
         <View style={styles.cardHeaderRow}>
           <Ionicons name="timer-outline" size={22} color={COLORS.primaryLight} />
-          <Text style={styles.cardTitle}>Felvétel késleltetése (elalvási idő)</Text>
+          <Text style={styles.cardTitle}>{t('delayCardTitle')}</Text>
         </View>
-        <Text style={styles.cardDesc}>
-          Mennyi idővel az indítás után kezdje a tényleges figyelést és hangrögzítést?
-        </Text>
+        <Text style={styles.cardDesc}>{t('delayCardDesc')}</Text>
 
         <View style={styles.delayChips}>
           {DELAY_OPTIONS.map((mins) => {
@@ -443,7 +448,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
                 }}
               >
                 <Text style={[styles.delayChipText, isSelected && styles.delayChipTextActive]}>
-                  {mins === 0 ? 'Azonnal' : `${mins} perc`}
+                  {mins === 0 ? t('immediate') : `${mins} ${t('minutesSuffix')}`}
                 </Text>
               </TouchableOpacity>
             );
@@ -451,37 +456,54 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         </View>
       </View>
 
-      {/* Sleep factors tracker */}
+      {/* Sleep factors & remedies tracker */}
       <View style={styles.setupCard}>
         <View style={styles.cardHeaderRow}>
           <Ionicons name="pulse-outline" size={22} color={COLORS.accent} />
-          <Text style={styles.cardTitle}>Mai szokások & kiváltó tényezők</Text>
+          <Text style={styles.cardTitle}>{t('factorsCardTitle')}</Text>
         </View>
-        <Text style={styles.cardDesc}>
-          Segít feltérképezni, mi befolyásolja a mai horkolásodat.
-        </Text>
+        <Text style={styles.cardDesc}>{t('factorsCardDesc')}</Text>
 
+        {/* Aggravating Triggers */}
+        <Text style={styles.subHeading}>{t('factorsSectionAggravating')}</Text>
         <View style={styles.factorsGrid}>
-          {FACTOR_PRESETS.map((factor) => {
-            const isSelected = selectedFactors.includes(factor);
+          {AGGRAVATING_KEYS.map((key) => {
+            const label = t(key);
+            const isSelected = selectedFactors.includes(label);
             return (
               <TouchableOpacity
-                key={factor}
+                key={key}
                 style={[styles.factorChip, isSelected && styles.factorChipActive]}
-                onPress={() => toggleFactor(factor)}
+                onPress={() => toggleFactor(label)}
               >
                 {isSelected && (
-                  <Ionicons
-                    name="checkmark"
-                    size={14}
-                    color="#FFFFFF"
-                    style={{ marginRight: 4 }}
-                  />
+                  <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
                 )}
-                <Text
-                  style={[styles.factorChipText, isSelected && styles.factorChipTextActive]}
-                >
-                  {factor}
+                <Text style={[styles.factorChipText, isSelected && styles.factorChipTextActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Remedies Applied */}
+        <Text style={[styles.subHeading, { marginTop: 14 }]}>{t('factorsSectionRemedies')}</Text>
+        <View style={styles.factorsGrid}>
+          {REMEDY_KEYS.map((key) => {
+            const label = t(key);
+            const isSelected = selectedFactors.includes(label);
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[styles.remedyChip, isSelected && styles.remedyChipActive]}
+                onPress={() => toggleFactor(label)}
+              >
+                {isSelected && (
+                  <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+                )}
+                <Text style={[styles.factorChipText, isSelected && styles.factorChipTextActive]}>
+                  {label}
                 </Text>
               </TouchableOpacity>
             );
@@ -496,12 +518,11 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         activeOpacity={0.85}
       >
         <Ionicons name="play" size={26} color="#FFFFFF" style={{ marginRight: 8 }} />
-        <Text style={styles.startHeroButtonText}>Alvás Figyelése Indítása</Text>
+        <Text style={styles.startHeroButtonText}>{t('startTrackingButton')}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.bottomTips}>
-        💡 Tipp: Csatlakoztasd a telefont töltőre éjszakára a zavartalan működéshez.
-      </Text>
+      <Text style={styles.bottomTips}>{t('chargingTip')}</Text>
+      <Text style={[styles.bottomTips, { marginTop: 2 }]}>{t('lockTip')}</Text>
     </ScrollView>
   );
 };
@@ -566,6 +587,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     lineHeight: 16,
   },
+  subHeading: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+  },
   delayChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -610,6 +637,20 @@ const styles = StyleSheet.create({
   factorChipActive: {
     backgroundColor: COLORS.accent,
     borderColor: COLORS.accent,
+  },
+  remedyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: COLORS.surfaceHighlight,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  remedyChipActive: {
+    backgroundColor: COLORS.quiet,
+    borderColor: COLORS.quiet,
   },
   factorChipText: {
     fontSize: 12,

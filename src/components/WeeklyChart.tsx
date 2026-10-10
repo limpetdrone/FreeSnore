@@ -2,14 +2,18 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SleepSession } from '../types/session';
 import { COLORS } from '../constants/theme';
+import { t, getLanguage } from '../i18n';
 
 interface WeeklyChartProps {
   sessions: SleepSession[];
 }
 
 export const WeeklyChart: React.FC<WeeklyChartProps> = ({ sessions }) => {
+  const isHu = getLanguage() === 'hu';
   // Generate the last 7 days starting from today backwards
-  const dayNames = ['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo'];
+  const dayNames = isHu
+    ? ['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const today = new Date();
   // Local (non-UTC) date key so sessions started near midnight map to the correct local calendar day
   const localDateKey = (d: Date) =>
@@ -52,11 +56,11 @@ export const WeeklyChart: React.FC<WeeklyChartProps> = ({ sessions }) => {
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.title}>Heti Áttekintés</Text>
-          <Text style={styles.subtitle}>Elmúlt 7 nap horkolási pontszámai</Text>
+          <Text style={styles.title}>{t('weeklyTitle')}</Text>
+          <Text style={styles.subtitle}>{t('weeklySubtitle')}</Text>
         </View>
         <View style={styles.avgBadge}>
-          <Text style={styles.avgLabel}>Heti átlag</Text>
+          <Text style={styles.avgLabel}>{t('weeklyAverage')}</Text>
           <Text style={[styles.avgValue, { color: getScoreColor(avgScore) }]}>{avgScore}</Text>
         </View>
       </View>
@@ -84,7 +88,7 @@ export const WeeklyChart: React.FC<WeeklyChartProps> = ({ sessions }) => {
                 />
               </View>
               <Text style={[styles.dayLabel, d.hasSession && styles.activeDayLabel]}>{d.dayLabel}</Text>
-              <Text style={styles.hoursLabel}>{d.hasSession ? `${d.hours}ó` : ''}</Text>
+              <Text style={styles.hoursLabel}>{d.hasSession ? `${d.hours}${isHu ? 'ó' : 'h'}` : ''}</Text>
             </View>
           );
         })}
@@ -93,24 +97,24 @@ export const WeeklyChart: React.FC<WeeklyChartProps> = ({ sessions }) => {
       {/* Weekly Stats Summary */}
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Rögzített éjszaka</Text>
+          <Text style={styles.statLabel}>{t('trackedNights')}</Text>
           <Text style={styles.statVal}>{validSessions.length} / 7</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Legcsendesebb nap</Text>
+          <Text style={styles.statLabel}>{t('quietestNight')}</Text>
           <Text style={[styles.statVal, { color: COLORS.quiet }]}>
             {validSessions.length > 0
-              ? `${Math.min(...validSessions.map((s) => s.score))} pont`
+              ? `${Math.min(...validSessions.map((s) => s.score))} ${t('points')}`
               : 'N/A'}
           </Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Legerősebb nap</Text>
+          <Text style={styles.statLabel}>{t('loudestNight')}</Text>
           <Text style={[styles.statVal, { color: COLORS.epic }]}>
             {validSessions.length > 0
-              ? `${Math.max(...validSessions.map((s) => s.score))} pont`
+              ? `${Math.max(...validSessions.map((s) => s.score))} ${t('points')}`
               : 'N/A'}
           </Text>
         </View>

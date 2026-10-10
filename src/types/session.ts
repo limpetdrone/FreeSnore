@@ -33,7 +33,9 @@ export interface SleepSession {
   peakDb: number;
   timeline: TimelineSample[];
   clips: SnoreClip[];
-  factors: string[]; // e.g., ["Hanyatt alvás", "Alkohol", "Orrdugulás"]
+  factors: string[]; // e.g., ["Hanyatt alvás", "Alkohol", "Orrtágító tapasz"]
+  apneaSuspectCount?: number; // Number of silence-followed-by-gasp cycles detected
+  nudgesTriggered?: number; // Number of gentle haptic nudges delivered
   notes?: string;
 }
 
@@ -43,4 +45,7 @@ export interface AppSettings {
   keepAwake: boolean;
   saveAudioClips: boolean;
   maxClipsPerSession: number;
+  language: 'hu' | 'en';
+  antiSnoreNudge: boolean; // Gentle haptic vibration when sustained loud snoring is detected
+  nudgeThresholdDb: number; // Decibel threshold for triggering nudge (e.g. 56 dB)
 }
