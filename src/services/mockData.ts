@@ -36,18 +36,18 @@ export function createMockSessions(): SleepSession[] {
   const sessions: SleepSession[] = [];
 
   const presets = [
-    { daysAgo: 0, score: 58, hours: 7.5, factor: 0.85, factors: ['Hanyatt fekvés', 'Késői vacsora'] },
-    { daysAgo: 1, score: 32, hours: 8.0, factor: 0.45, factors: ['Oldalfekvés', 'Orrspray'] },
-    { daysAgo: 2, score: 76, hours: 6.8, factor: 1.1, factors: ['Alkohol', 'Fáradtság', 'Hanyatt fekvés'] },
-    { daysAgo: 3, score: 44, hours: 7.2, factor: 0.65, factors: ['Oldalfekvés'] },
-    { daysAgo: 4, score: 22, hours: 8.2, factor: 0.35, factors: ['Párásító', 'Oldalfekvés'] },
-    { daysAgo: 5, score: 88, hours: 6.5, factor: 1.25, factors: ['Alkohol', 'Orrdugulás'] },
-    { daysAgo: 6, score: 35, hours: 7.8, factor: 0.5, factors: ['Orrtágító tapasz'] },
-    { daysAgo: 8, score: 62, hours: 7.0, factor: 0.9, factors: ['Hanyatt fekvés'] },
-    { daysAgo: 11, score: 28, hours: 8.1, factor: 0.4, factors: ['Oldalfekvés'] },
-    { daysAgo: 14, score: 54, hours: 7.3, factor: 0.8, factors: ['Stresszes nap'] },
-    { daysAgo: 18, score: 70, hours: 6.9, factor: 1.05, factors: ['Alkohol', 'Hanyatt fekvés'] },
-    { daysAgo: 22, score: 38, hours: 7.6, factor: 0.55, factors: ['Oldalfekvés'] },
+    { daysAgo: 0, score: 58, hours: 7.5, factor: 0.85, factors: ['factorBackSleep', 'factorLateMeal'] },
+    { daysAgo: 1, score: 32, hours: 8.0, factor: 0.45, factors: ['factorSideSleep', 'remedyNasalSpray'] },
+    { daysAgo: 2, score: 76, hours: 6.8, factor: 1.1, factors: ['factorAlcohol', 'factorFatigue', 'factorBackSleep'] },
+    { daysAgo: 3, score: 44, hours: 7.2, factor: 0.65, factors: ['factorSideSleep'] },
+    { daysAgo: 4, score: 22, hours: 8.2, factor: 0.35, factors: ['remedyHumidifier', 'factorSideSleep'] },
+    { daysAgo: 5, score: 88, hours: 6.5, factor: 1.25, factors: ['factorAlcohol', 'factorBlockedNose'] },
+    { daysAgo: 6, score: 35, hours: 7.8, factor: 0.5, factors: ['remedyNasalStrips'] },
+    { daysAgo: 8, score: 62, hours: 7.0, factor: 0.9, factors: ['factorBackSleep'] },
+    { daysAgo: 11, score: 28, hours: 8.1, factor: 0.4, factors: ['factorSideSleep'] },
+    { daysAgo: 14, score: 54, hours: 7.3, factor: 0.8, factors: ['factorStress'] },
+    { daysAgo: 18, score: 70, hours: 6.9, factor: 1.05, factors: ['factorAlcohol', 'factorBackSleep'] },
+    { daysAgo: 22, score: 38, hours: 7.6, factor: 0.55, factors: ['factorSideSleep'] },
   ];
 
   presets.forEach((p, idx) => {

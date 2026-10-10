@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getSettings, saveSettings, DEFAULT_SETTINGS } from '../services/storage';
 import { AppSettings } from '../types/session';
 import { COLORS } from '../constants/theme';
-import { t, setLanguage, Language } from '../i18n';
+import { t, getLanguage, setLanguage, Language } from '../i18n';
 
 interface SettingsScreenProps {
   onLanguageChange?: (lang: Language) => void;
@@ -21,10 +21,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
-    getSettings().then((s) => {
-      setSettings(s);
-      setLanguage(s.language || 'hu');
-    });
+    getSettings().then(setSettings);
   }, []);
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
@@ -38,7 +35,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
   };
 
   const delayPresets = [0, 5, 10, 15, 20, 30, 45];
-  const nudgeThresholds = [50, 56, 62];
+  // No stored choice means the device locale decides
+  const activeLanguage = settings.language ?? getLanguage();
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
@@ -54,19 +52,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
 
         <View style={styles.chipsRow}>
           <TouchableOpacity
-            style={[styles.chip, settings.language === 'hu' && styles.chipActive]}
+            style={[styles.chip, activeLanguage === 'hu' && styles.chipActive]}
             onPress={() => updateSetting('language', 'hu')}
           >
-            <Text style={[styles.chipText, settings.language === 'hu' && styles.chipTextActive]}>
+            <Text style={[styles.chipText, activeLanguage === 'hu' && styles.chipTextActive]}>
               🇭🇺 {t('langHu')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.chip, settings.language === 'en' && styles.chipActive]}
+            style={[styles.chip, activeLanguage === 'en' && styles.chipActive]}
             onPress={() => updateSetting('language', 'en')}
           >
-            <Text style={[styles.chipText, settings.language === 'en' && styles.chipTextActive]}>
+            <Text style={[styles.chipText, activeLanguage === 'en' && styles.chipTextActive]}>
               🇬🇧 {t('langEn')}
             </Text>
           </TouchableOpacity>
@@ -135,50 +133,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
         </View>
       </View>
 
-      {/* Anti-Snore Nudge section */}
-      <View style={styles.card}>
-        <View style={styles.switchRow}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-              <Ionicons name="pulse" size={16} color={COLORS.accent} />
-              <Text style={styles.switchLabel}>{t('antiSnoreNudgeTitle')}</Text>
-            </View>
-            <Text style={styles.switchDesc}>{t('antiSnoreNudgeDesc')}</Text>
-          </View>
-          <Switch
-            value={settings.antiSnoreNudge}
-            onValueChange={(val) => updateSetting('antiSnoreNudge', val)}
-            trackColor={{ false: COLORS.surfaceHighlight, true: COLORS.accent }}
-          />
-        </View>
-
-        {settings.antiSnoreNudge && (
-          <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 10 }}>
-            <Text style={[styles.cardDesc, { marginBottom: 8 }]}>
-              {settings.language === 'hu' ? 'Aktiválási küszöb:' : 'Trigger threshold:'}
-            </Text>
-            <View style={styles.chipsRow}>
-              {nudgeThresholds.map((th) => (
-                <TouchableOpacity
-                  key={th}
-                  style={[styles.chip, settings.nudgeThresholdDb === th && styles.chipActive]}
-                  onPress={() => updateSetting('nudgeThresholdDb', th)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      settings.nudgeThresholdDb === th && styles.chipTextActive,
-                    ]}
-                  >
-                    {th} dB {th === 50 ? '(Sensitive)' : th === 56 ? '(Standard)' : '(Loud only)'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-      </View>
-
       {/* Toggles */}
       <View style={styles.card}>
         <View style={styles.switchRow}>
@@ -213,7 +167,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
         <Text style={styles.infoLine}>Bundle ID: com.limpetdrone.freesnore</Text>
         <Text style={styles.infoLine}>{t('platformLabel')}: iOS (TestFlight) & Android</Text>
         <Text style={[styles.infoLine, { marginTop: 6, color: COLORS.textMuted }]}>
-          FreeSnore is a private, open-source snore tracker providing clinical-grade acoustic metrics.
+          {t('aboutDescription')}
         </Text>
       </View>
     </ScrollView>

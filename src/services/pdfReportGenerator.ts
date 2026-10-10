@@ -1,13 +1,22 @@
+import { Alert } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { SleepSession } from '../types/session';
-import { t, getLanguage } from '../i18n';
+import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
+
+const escapeHtml = (text: string) =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 export async function generateAndSharePdfReport(session: SleepSession): Promise<boolean> {
   try {
     const isAvailable = await Sharing.isAvailableAsync();
     if (!isAvailable) {
-      alert('Sharing is not available on this device');
+      Alert.alert(t('saveErrorTitle'), t('sharingUnavailable'));
       return false;
     }
 
@@ -20,10 +29,8 @@ export async function generateAndSharePdfReport(session: SleepSession): Promise<
       weekday: 'long',
     });
 
-    const totalHours = Math.floor(session.totalDurationSeconds / 3600);
-    const totalMins = Math.floor((session.totalDurationSeconds % 3600) / 60);
-    const snoreHours = Math.floor(session.snoreDurationSeconds / 3600);
-    const snoreMins = Math.floor((session.snoreDurationSeconds % 3600) / 60);
+    const totalDuration = formatHoursMinutes(session.totalDurationSeconds);
+    const snoreDuration = formatHoursMinutes(session.snoreDurationSeconds);
 
     const timelineBarsHtml = (session.timeline || [])
       .map((sample) => {
@@ -39,7 +46,7 @@ export async function generateAndSharePdfReport(session: SleepSession): Promise<
     const factorsHtml = (session.factors || [])
       .map(
         (f) =>
-          `<span style="background: #EEF2F6; color: #1E293B; padding: 4px 10px; border-radius: 12px; font-size: 11px; margin-right: 6px; display: inline-block; margin-bottom: 4px;">${f}</span>`
+          `<span style="background: #EEF2F6; color: #1E293B; padding: 4px 10px; border-radius: 12px; font-size: 11px; margin-right: 6px; display: inline-block; margin-bottom: 4px;">${escapeHtml(tFactor(f))}</span>`
       )
       .join('');
 
@@ -163,18 +170,18 @@ export async function generateAndSharePdfReport(session: SleepSession): Promise<
           <div class="score-number">${session.snoreScore}</div>
           <div style="font-weight: 700; font-size: 14px; color: #475569;">${t('snoreScoreLabel')}</div>
           <div style="font-size: 12px; color: #64748B; margin-top: 4px;">
-            ${startDate.toLocaleTimeString()} - ${endDate.toLocaleTimeString()} (${totalHours}h ${totalMins}m)
+            ${startDate.toLocaleTimeString()} - ${endDate.toLocaleTimeString()} (${totalDuration})
           </div>
         </div>
 
         <div class="stats-grid">
           <div class="stat-box">
             <div class="stat-label">${t('totalSleepTime')}</div>
-            <div class="stat-val">${totalHours}h ${totalMins}m</div>
+            <div class="stat-val">${totalDuration}</div>
           </div>
           <div class="stat-box">
             <div class="stat-label">${t('snoreDuration')}</div>
-            <div class="stat-val">${snoreHours}h ${snoreMins}m</div>
+            <div class="stat-val">${snoreDuration}</div>
           </div>
           <div class="stat-box">
             <div class="stat-label">${t('peakLoudness')}</div>
@@ -204,15 +211,6 @@ export async function generateAndSharePdfReport(session: SleepSession): Promise<
         <div class="timeline-container">
           ${timelineBarsHtml}
         </div>
-
-        ${
-          session.apneaSuspectCount && session.apneaSuspectCount > 0
-            ? `<div class="alert-box">
-                <strong>${t('apneaWarningTitle')}</strong><br>
-                ${t('apneaWarningBody', { count: session.apneaSuspectCount })}
-              </div>`
-            : ''
-        }
 
         ${
           session.factors && session.factors.length > 0

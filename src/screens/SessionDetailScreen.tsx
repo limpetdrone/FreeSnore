@@ -15,7 +15,7 @@ import { ClipPlayer } from '../components/ClipPlayer';
 import { COLORS } from '../constants/theme';
 import { deleteSession } from '../services/storage';
 import { generateAndSharePdfReport } from '../services/pdfReportGenerator';
-import { t, getLanguage } from '../i18n';
+import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
 interface SessionDetailScreenProps {
   session: SleepSession;
@@ -44,11 +44,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
       weekday: 'short',
     });
 
-  const totalHours = Math.floor(session.totalDurationSeconds / 3600);
-  const totalMins = Math.floor((session.totalDurationSeconds % 3600) / 60);
-
-  const snoreHours = Math.floor(session.snoreDurationSeconds / 3600);
-  const snoreMins = Math.floor((session.snoreDurationSeconds % 3600) / 60);
+  const totalDuration = formatHoursMinutes(session.totalDurationSeconds);
 
   const handleDelete = () => {
     Alert.alert(
@@ -85,7 +81,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
         <View style={styles.headerTitleBox}>
           <Text style={styles.headerTitle}>{formatDate(startDate)}</Text>
           <Text style={styles.headerSubtitle}>
-            {formatTime(startDate)} - {formatTime(endDate)} ({totalHours}h {totalMins}m)
+            {formatTime(startDate)} - {formatTime(endDate)} ({totalDuration})
           </Text>
         </View>
         <View style={styles.headerActions}>
@@ -134,15 +130,14 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
                 <View style={styles.statBox}>
                   <Text style={styles.statLabel}>{t('totalSleepTime')}</Text>
                   <Text style={styles.statValue}>
-                    {totalHours}h {totalMins}m
+                    {totalDuration}
                   </Text>
                 </View>
 
                 <View style={styles.statBox}>
                   <Text style={styles.statLabel}>{t('snoreDuration')}</Text>
                   <Text style={[styles.statValue, { color: COLORS.loud }]}>
-                    {snoreHours > 0 ? `${snoreHours}h ` : ''}
-                    {snoreMins}m
+                    {formatHoursMinutes(session.snoreDurationSeconds)}
                   </Text>
                 </View>
 
@@ -158,29 +153,6 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
                   </Text>
                 </View>
               </View>
-
-              {/* Apnea Warning Alert if detected */}
-              {session.apneaSuspectCount !== undefined && session.apneaSuspectCount > 0 && (
-                <View style={styles.apneaCard}>
-                  <View style={styles.apneaHeader}>
-                    <Ionicons name="warning" size={18} color="#F59E0B" />
-                    <Text style={styles.apneaTitle}>{t('apneaWarningTitle')}</Text>
-                  </View>
-                  <Text style={styles.apneaText}>
-                    {t('apneaWarningBody', { count: session.apneaSuspectCount })}
-                  </Text>
-                </View>
-              )}
-
-              {/* Nudge feedback if triggered */}
-              {session.nudgesTriggered !== undefined && session.nudgesTriggered > 0 && (
-                <View style={styles.nudgeBadgeBox}>
-                  <Ionicons name="pulse" size={14} color={COLORS.accent} />
-                  <Text style={styles.nudgeBadgeText}>
-                    {t('nudgeApplied', { count: session.nudgesTriggered })}
-                  </Text>
-                </View>
-              )}
 
               {/* Intensity progress distribution bar */}
               <View style={styles.distributionContainer}>
@@ -231,7 +203,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
                 <View style={styles.chipRow}>
                   {session.factors.map((factor, idx) => (
                     <View key={idx} style={styles.chip}>
-                      <Text style={styles.chipText}>{factor}</Text>
+                      <Text style={styles.chipText}>{tFactor(factor)}</Text>
                     </View>
                   ))}
                 </View>
@@ -355,46 +327,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.textPrimary,
-  },
-  apneaCard: {
-    backgroundColor: '#78350F25',
-    borderWidth: 1,
-    borderColor: '#D97706',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  apneaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  apneaTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FBBF24',
-  },
-  apneaText: {
-    fontSize: 11,
-    color: '#FDE68A',
-    lineHeight: 16,
-  },
-  nudgeBadgeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: COLORS.surfaceHighlight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  nudgeBadgeText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
   },
   distributionContainer: {
     marginTop: 8,

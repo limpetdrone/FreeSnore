@@ -24,7 +24,16 @@ export const translations = {
     factorsSectionRemedies: 'Alkalmazott gyógymódok:',
     startTrackingButton: 'Alvás Figyelése Indítása',
     chargingTip: '💡 Tipp: Csatlakoztasd a telefont töltőre éjszakára a zavartalan működéshez.',
-    lockTip: '💡 Le is zárhatod a képernyőt az oldalsó gombbal; a felvétel a háttérben zavartalanul folytatódik.',
+    lockTipIos: '💡 Le is zárhatod a képernyőt: a figyelés és az elemzés a háttérben is folytatódik.',
+    lockTipAndroid: '💡 Hagyd bekapcsolva a képernyőt (az éjszakai óra mód sötét): Androidon lezárt képernyőnél az elemzés szünetel.',
+    unitHour: 'ó',
+    unitMin: 'p',
+    unitSec: 'mp',
+    aboutDescription: 'A FreeSnore egy ingyenes, nyílt forráskódú horkolásfigyelő. Nem orvostechnikai eszköz.',
+    remedyCompareTitle: 'Mi segít? (átlagpont vele / nélküle)',
+    remedyCompareLower: '{pct}%-kal alacsonyabb pontszám',
+    remedyCompareHigher: '{pct}%-kal magasabb pontszám',
+    remedyCompareHint: 'Tényezőnként legalább 3 éjszaka kell vele és nélküle is az összehasonlításhoz.',
 
     // Factors & Remedies
     factorBackSleep: 'Hanyatt alvás',
@@ -51,7 +60,6 @@ export const translations = {
     elapsedSleepTime: 'Eltelt alvásidő',
     snoringTime: 'Horkolási idő',
     peakLoudness: 'Csúcs hangerő',
-    nudgesTriggered: 'Rezgések száma',
     nightClockModeBtn: 'Éjszakai sötétített óra mód',
     finishSleepBtn: 'Ébredés / Elemzés Befejezése',
     finishSleepPromptTitle: 'Alvás befejezése',
@@ -92,17 +100,8 @@ export const translations = {
     deleteSessionPrompt: 'Biztosan törölni szeretnéd ezt a mentett alváselemzést és a hangfelvételt?',
     deleteAction: 'Törlés',
     exportPdfBtn: 'Orvosi PDF Jelentés',
-    shareClip: 'Megosztás',
     noAudioFile: 'Nincs elérhető hangfájl ehhez a részlethez.',
-
-    // Apnea Disclaimer
-    apneaWarningTitle: '⚠️ Légzéskimaradás (Apnoe) gyanú',
-    apneaWarningBody:
-      'Az éjszaka folyamán {count} alkalommal észleltünk olyan epizódot, ahol horkolást hirtelen csend, majd mély horkantás követett. Ez alvási apnoéra (OSA) utalhat. Javasoljuk orvosi alvásvizsgálat elvégzését!',
-    apneaIndicator: '{count} légzéskimaradási gyanú',
-
-    // Anti-Snore Nudge Notification
-    nudgeApplied: 'Horkolásgátló rezgés aktiválva {count} alkalommal',
+    sharingUnavailable: 'A megosztás nem érhető el ezen az eszközön.',
 
     // History Screen
     historyDaily: 'Napi Bontás',
@@ -132,9 +131,7 @@ export const translations = {
     monthlyAverage: 'Havi átlag',
     fourWeekProgression: 'Heti bontás (utolsó 4 hét):',
     nightsSuffix: 'éjszaka',
-    remedyImpactTitle: 'Gyógymódok és tényezők hatása:',
     averagePoints: 'átlagpont',
-    occurrencesSuffix: 'alkalom',
     monthlyInsightTitle: '💡 Havi Összegzés',
     monthlyInsightGreat: 'Kitűnő eredmény! A horkolása az elmúlt hónapban az egészséges, alacsony tartományban maradt.',
     monthlyInsightModerate:
@@ -154,12 +151,10 @@ export const translations = {
     sensLow: 'Alacsony (52+ dB)',
     sensMed: 'Közepes (44+ dB)',
     sensHigh: 'Magas (38+ dB)',
-    antiSnoreNudgeTitle: 'Horkolásgátló Rezgés (Anti-Snore Nudge)',
-    antiSnoreNudgeDesc: 'Finom rezgéssel jelzi a tartós horkolást, hogy pozíciót válts felébredés nélkül.',
     keepAwakeTitle: 'Képernyő ébrentartása (Keep Awake)',
-    keepAwakeDesc: 'Megakadályozza a telefon automatikus lezárását.',
+    keepAwakeDesc: 'Androidon szükséges: lezárt képernyőnél az elemzés szünetel. iOS-en nem kell, ott kapcsold ki az akkumulátor kímélése érdekében.',
     saveClipsTitle: 'Horkolási hangminták rögzítése',
-    saveClipsDesc: 'Hangminták visszahallgatása és megosztása a kiértékelésben.',
+    saveClipsDesc: 'Hangminták visszahallgatása a kiértékelésben.',
     aboutTitle: 'TestFlight & Alkalmazás Infó',
     versionLabel: 'Verzió',
     platformLabel: 'Platform',
@@ -192,7 +187,16 @@ export const translations = {
     factorsSectionRemedies: 'Remedies Applied:',
     startTrackingButton: 'Start Sleep Tracking',
     chargingTip: '💡 Tip: Keep your phone connected to a charger overnight for seamless operation.',
-    lockTip: '💡 You can lock the screen with the side button; background recording continues uninterrupted.',
+    lockTipIos: '💡 You can lock the screen: monitoring and analysis continue in the background.',
+    lockTipAndroid: '💡 Keep the screen on (the night clock is dark): on Android, analysis pauses while the screen is locked.',
+    unitHour: 'h',
+    unitMin: 'm',
+    unitSec: 's',
+    aboutDescription: 'FreeSnore is a free, open-source snore tracker. It is not a medical device.',
+    remedyCompareTitle: 'What helps? (avg score with / without)',
+    remedyCompareLower: '{pct}% lower score',
+    remedyCompareHigher: '{pct}% higher score',
+    remedyCompareHint: 'Comparison needs at least 3 nights with and 3 without each factor.',
 
     // Factors & Remedies
     factorBackSleep: 'Sleeping on Back',
@@ -219,7 +223,6 @@ export const translations = {
     elapsedSleepTime: 'Elapsed sleep time',
     snoringTime: 'Snoring time',
     peakLoudness: 'Peak loudness',
-    nudgesTriggered: 'Nudges triggered',
     nightClockModeBtn: 'Dimmed Night Clock Mode',
     finishSleepBtn: 'Wake Up / Finish Analysis',
     finishSleepPromptTitle: 'End Sleep Session',
@@ -260,17 +263,8 @@ export const translations = {
     deleteSessionPrompt: 'Are you sure you want to permanently delete this sleep session and audio recording?',
     deleteAction: 'Delete',
     exportPdfBtn: 'Export Doctor PDF Report',
-    shareClip: 'Share',
     noAudioFile: 'No audio file available for this snippet.',
-
-    // Apnea Disclaimer
-    apneaWarningTitle: '⚠️ Breathing Pause (Apnea) Suspected',
-    apneaWarningBody:
-      'We detected {count} episodes where loud snoring was followed by prolonged silence and sudden gasps. This pattern may indicate Obstructive Sleep Apnea (OSA). We recommend consulting a healthcare professional!',
-    apneaIndicator: '{count} apnea events',
-
-    // Anti-Snore Nudge Notification
-    nudgeApplied: 'Anti-snore gentle vibration triggered {count} times',
+    sharingUnavailable: 'Sharing is not available on this device.',
 
     // History Screen
     historyDaily: 'Daily',
@@ -300,9 +294,7 @@ export const translations = {
     monthlyAverage: 'Monthly average',
     fourWeekProgression: '4-Week Progression:',
     nightsSuffix: 'nights',
-    remedyImpactTitle: 'Impact of Factors & Remedies:',
     averagePoints: 'avg score',
-    occurrencesSuffix: 'times',
     monthlyInsightTitle: '💡 Monthly Summary',
     monthlyInsightGreat: 'Excellent result! Your snoring stayed within the healthy, mild range this month.',
     monthlyInsightModerate:
@@ -322,10 +314,8 @@ export const translations = {
     sensLow: 'Low (52+ dB)',
     sensMed: 'Medium (44+ dB)',
     sensHigh: 'High (38+ dB)',
-    antiSnoreNudgeTitle: 'Anti-Snore Vibration (Nudge)',
-    antiSnoreNudgeDesc: 'Gently vibrates the phone when sustained loud snoring is detected to encourage changing sleep position.',
     keepAwakeTitle: 'Keep Screen Awake',
-    keepAwakeDesc: 'Prevents the device from automatically going to sleep while active.',
+    keepAwakeDesc: 'Needed on Android, where analysis pauses while the screen is locked. Not needed on iOS; leave it off there to save battery.',
     saveClipsTitle: 'Save Snore Audio Clips',
     saveClipsDesc: 'Capture and replay snore snippets during morning review.',
     aboutTitle: 'TestFlight & App Information',
@@ -374,4 +364,18 @@ export function t(key: keyof typeof translations['hu'], params?: Record<string, 
   }
 
   return text;
+}
+
+type TranslationKey = keyof (typeof translations)['hu'];
+
+// Factors are stored as translation keys so stats survive a language switch.
+// Sessions saved before that change hold plain text, which is shown as-is.
+export function tFactor(factor: string): string {
+  return factor in translations.hu ? t(factor as TranslationKey) : factor;
+}
+
+export function formatHoursMinutes(totalSeconds: number): string {
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  return hrs > 0 ? `${hrs}${t('unitHour')} ${mins}${t('unitMin')}` : `${mins}${t('unitMin')}`;
 }

@@ -67,8 +67,8 @@ export default function App() {
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <StatusBar style="light" />
 
-        {/* Header (hidden if viewing detail screen, as detail screen has its own custom back header) */}
-        {!selectedSession && (
+        {/* Header hidden while tracking so the night clock is a fully dark screen */}
+        {!selectedSession && !isTracking && (
           <View style={styles.topBar}>
             <View style={styles.logoRow}>
               <View style={styles.logoCircle}>

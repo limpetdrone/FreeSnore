@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SleepSession, AppSettings } from '../types/session';
 import { createMockSessions } from './mockData';
@@ -9,12 +10,10 @@ const SETTINGS_STORAGE_KEY = '@freesnore_settings_v1';
 export const DEFAULT_SETTINGS: AppSettings = {
   startDelayMinutes: 15,
   sensitivity: 'medium',
-  keepAwake: true,
+  // Android pauses JS timers (and so the analysis) while the screen is off; iOS keeps them running
+  keepAwake: Platform.OS === 'android',
   saveAudioClips: true,
   maxClipsPerSession: 15,
-  language: 'hu',
-  antiSnoreNudge: false,
-  nudgeThresholdDb: 56,
 };
 
 export async function getSessions(): Promise<SleepSession[]> {

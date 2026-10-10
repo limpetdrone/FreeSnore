@@ -8,7 +8,6 @@ import {
 } from 'expo-audio';
 import type { AudioPlayer, AudioRecorder } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import { SnoreIntensity, SnoreClip, TimelineSample } from '../types/session';
 import { snoreClassifier } from './snoreDetector';
@@ -26,8 +25,6 @@ export interface MonitoringOptions {
   minSnoreDb: number; // Sensitivity: absolute minimum threshold
   maxClips: number;
   saveAudio: boolean;
-  antiSnoreNudge: boolean;
-  nudgeThresholdDb: number;
 }
 
 export interface MonitoringResult {
@@ -38,8 +35,6 @@ export interface MonitoringResult {
   peakDb: number;
   timeline: TimelineSample[];
   clips: SnoreClip[];
-  nudgesTriggered: number;
-  apneaSuspectCount: number;
 }
 
 const FRAME_INTERVAL_MS = 250;
@@ -78,8 +73,6 @@ export class SleepMonitorService {
     minSnoreDb: 44,
     maxClips: 15,
     saveAudio: true,
-    antiSnoreNudge: false,
-    nudgeThresholdDb: 56,
   };
   private recordingStartTime: number = 0; // Timestamp when audio file recording starts
   private monitorStartTime: number = 0; // Timestamp when snore classification begins (after delay)
@@ -87,10 +80,10 @@ export class SleepMonitorService {
   private currentDb: number = 30;
   private peakDb: number = 30;
   private snoringSeconds: number = 0;
-  private nudgesCount: number = 0;
 
   // Real-time tracking arrays
-  private minuteBuckets: { [minute: number]: number[] } = {};
+  // Running sum/count per minute instead of every frame (~115k values per night)
+  private minuteBuckets: { [minute: number]: { sum: number; count: number } } = {};
   private detectedClips: SnoreClip[] = [];
 
   private onStatusCallback: ((status: LiveAudioStatus) => void) | null = null;
@@ -152,13 +145,11 @@ export class SleepMonitorService {
       this.currentDb = 30;
       this.peakDb = 30;
       this.snoringSeconds = 0;
-      this.nudgesCount = 0;
       this.minuteBuckets = {};
       this.detectedClips = [];
 
       snoreClassifier.reset();
       snoreClassifier.setMinThreshold(options.minSnoreDb);
-      snoreClassifier.setNudgeConfig(options.antiSnoreNudge, options.nudgeThresholdDb);
 
       // Instantiate recorder outside component using native class
       // eslint-disable-next-line import/namespace -- Native class exported by expo-audio
@@ -222,10 +213,13 @@ export class SleepMonitorService {
     }
 
     const currentMinute = Math.floor((now - this.monitorStartTime) / 60000);
-    if (!this.minuteBuckets[currentMinute]) {
-      this.minuteBuckets[currentMinute] = [];
+    const bucket = this.minuteBuckets[currentMinute];
+    if (bucket) {
+      bucket.sum += db;
+      bucket.count += 1;
+    } else {
+      this.minuteBuckets[currentMinute] = { sum: db, count: 1 };
     }
-    this.minuteBuckets[currentMinute].push(db);
 
     // Run acoustic classifier
     const candidate = snoreClassifier.processFrame(db, now);
@@ -233,16 +227,6 @@ export class SleepMonitorService {
       // Valid snore event: accumulate snore duration
       const eventSec = Math.max(1, Math.round(candidate.durationMs / 1000));
       this.snoringSeconds += eventSec;
-
-      // Trigger anti-snore gentle haptic nudge if required
-      if (candidate.shouldNudge) {
-        this.nudgesCount += 1;
-        try {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        } catch {
-          // ignore haptics error if unsupported
-        }
-      }
 
       // Register audio clip reference if within limit
       if (this.options.saveAudio && this.detectedClips.length < this.options.maxClips) {
@@ -328,9 +312,8 @@ export class SleepMonitorService {
     const minutes = Object.keys(this.minuteBuckets).map(Number).sort((a, b) => a - b);
 
     for (const m of minutes) {
-      const values = this.minuteBuckets[m];
-      const avg = values.reduce((acc, v) => acc + v, 0) / (values.length || 1);
-      const roundedDb = Math.round(avg);
+      const { sum, count } = this.minuteBuckets[m];
+      const roundedDb = Math.round(sum / count);
 
       const sampleTime = new Date(startTime + m * 60 * 1000);
       const hh = sampleTime.getHours().toString().padStart(2, '0');
@@ -355,8 +338,6 @@ export class SleepMonitorService {
       peakDb: this.peakDb,
       timeline,
       clips,
-      nudgesTriggered: this.nudgesCount,
-      apneaSuspectCount: snoreClassifier.getApneaCount(),
     };
   }
 

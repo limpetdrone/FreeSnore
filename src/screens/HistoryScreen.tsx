@@ -11,7 +11,7 @@ import { SleepSession } from '../types/session';
 import { WeeklyChart } from '../components/WeeklyChart';
 import { MonthlyChart } from '../components/MonthlyChart';
 import { COLORS } from '../constants/theme';
-import { t, getLanguage } from '../i18n';
+import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
 interface HistoryScreenProps {
   sessions: SleepSession[];
@@ -43,12 +43,6 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   };
 
   const renderDailySessionItem = (item: SleepSession) => {
-    const hrs = Math.floor(item.totalDurationSeconds / 3600);
-    const mins = Math.floor((item.totalDurationSeconds % 3600) / 60);
-
-    const snoreHrs = Math.floor(item.snoreDurationSeconds / 3600);
-    const snoreMins = Math.floor((item.snoreDurationSeconds % 3600) / 60);
-
     const scoreCol = getScoreColor(item.snoreScore);
 
     return (
@@ -64,15 +58,14 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             <View style={styles.detailItem}>
               <Ionicons name="time-outline" size={13} color={COLORS.textMuted} />
               <Text style={styles.detailText}>
-                {hrs}h {mins}m {t('sleepLabel')}
+                {formatHoursMinutes(item.totalDurationSeconds)} {t('sleepLabel')}
               </Text>
             </View>
 
             <View style={styles.detailItem}>
               <Ionicons name="volume-medium-outline" size={13} color={COLORS.loud} />
               <Text style={[styles.detailText, { color: COLORS.loud }]}>
-                {snoreHrs > 0 ? `${snoreHrs}h ` : ''}
-                {snoreMins}m {t('snoreLabel')}
+                {formatHoursMinutes(item.snoreDurationSeconds)} {t('snoreLabel')}
               </Text>
             </View>
           </View>
@@ -81,21 +74,12 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             <View style={styles.factorsRow}>
               {item.factors.slice(0, 3).map((f, i) => (
                 <Text key={i} style={styles.factorSmallBadge}>
-                  {f}
+                  {tFactor(f)}
                 </Text>
               ))}
               {item.factors.length > 3 && (
                 <Text style={styles.factorSmallBadge}>+{item.factors.length - 3}</Text>
               )}
-            </View>
-          )}
-
-          {item.apneaSuspectCount !== undefined && item.apneaSuspectCount > 0 && (
-            <View style={styles.apneaIndicatorRow}>
-              <Ionicons name="warning" size={12} color="#F59E0B" />
-              <Text style={styles.apneaIndicatorText}>
-                {t('apneaIndicator', { count: item.apneaSuspectCount })}
-              </Text>
             </View>
           )}
         </View>
@@ -299,17 +283,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-  },
-  apneaIndicatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  apneaIndicatorText: {
-    fontSize: 10,
-    color: '#F59E0B',
-    fontWeight: '600',
   },
   cardRight: {
     alignItems: 'center',

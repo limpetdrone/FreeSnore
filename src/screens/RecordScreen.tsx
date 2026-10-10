@@ -8,9 +8,12 @@ import {
   Alert,
   AppState,
   BackHandler,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import * as Brightness from 'expo-brightness';
 import * as Haptics from 'expo-haptics';
 import { sleepMonitor, LiveAudioStatus } from '../services/audioService';
 import { calculateSnoreStats } from '../services/scoreCalculator';
@@ -18,7 +21,7 @@ import { saveSession, getSettings, DEFAULT_SETTINGS } from '../services/storage'
 import { SleepSession, AppSettings } from '../types/session';
 import { COLORS, SNORE_LEVELS } from '../constants/theme';
 import { showTrackingNotification, dismissTrackingNotification } from '../services/notificationService';
-import { t } from '../i18n';
+import { t, formatHoursMinutes } from '../i18n';
 
 interface RecordScreenProps {
   onSessionFinished: (session: SleepSession) => void;
@@ -26,6 +29,7 @@ interface RecordScreenProps {
 }
 
 const DELAY_OPTIONS = [0, 5, 10, 15, 20, 30, 45];
+const AUTO_NIGHT_CLOCK_MS = 30000;
 
 const AGGRAVATING_KEYS = [
   'factorBackSleep',
@@ -60,9 +64,13 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [selectedDelay, setSelectedDelay] = useState<number>(DEFAULT_SETTINGS.startDelayMinutes);
   const [countdownRemainingSec, setCountdownRemainingSec] = useState<number>(0);
-  const [selectedFactors, setSelectedFactors] = useState<string[]>([t('factorSideSleep')]);
+  // Translation keys, not labels, so stats survive a language switch
+  const [selectedFactors, setSelectedFactors] = useState<string[]>(['factorSideSleep']);
   const [nightClockMode, setNightClockMode] = useState<boolean>(false);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>(() => formatClock(new Date()));
+  // Small per-minute offset of the night clock text against OLED burn-in
+  const [clockShift, setClockShift] = useState({ x: 0, y: 0 });
+  const [minutesToStart, setMinutesToStart] = useState(0);
 
   const [liveStatus, setLiveStatus] = useState<LiveAudioStatus>({
     currentDb: 30,
@@ -72,9 +80,11 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     snoringSeconds: 0,
   });
 
-  const countdownTimerRef = useRef<any>(null);
-  const clockTimerRef = useRef<any>(null);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAppActiveRef = useRef<boolean>(true);
+  const nightClockModeRef = useRef<boolean>(false);
+  const lastStatusRef = useRef<LiveAudioStatus | null>(null);
 
   useEffect(() => {
     getSettings().then((s) => {
@@ -85,21 +95,67 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     // App state listener: pause UI re-render when device is locked/in background
     const sub = AppState.addEventListener('change', (nextState) => {
       isAppActiveRef.current = nextState === 'active';
+      // Catch up on the status skipped while in the background
+      if (isAppActiveRef.current && lastStatusRef.current && !nightClockModeRef.current) {
+        setLiveStatus(lastStatusRef.current);
+      }
     });
-
-    // Night clock throttled (5s) update to minimize CPU churn
-    clockTimerRef.current = setInterval(() => {
-      if (!isAppActiveRef.current) return;
-      setCurrentTimeStr(formatClock(new Date()));
-    }, 5000);
 
     return () => {
       sub.remove();
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
-      if (clockTimerRef.current) clearInterval(clockTimerRef.current);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       deactivateKeepAwake();
     };
   }, []);
+
+  // The night clock shows HH:MM only, so it ticks once per minute, aligned to the
+  // minute boundary, and only while it is visible.
+  useEffect(() => {
+    nightClockModeRef.current = nightClockMode;
+    if (!nightClockMode) {
+      if (lastStatusRef.current) setLiveStatus(lastStatusRef.current);
+      return;
+    }
+    // Android keeps the screen on all night (see keepAwake), so dim this window to
+    // near-minimum while the clock is shown. Window-only: needs no permission and the
+    // system brightness is restored on exit. iOS brightness is global, so it is left alone.
+    if (Platform.OS === 'android') {
+      Brightness.setBrightnessAsync(0.02).catch(() => {});
+    }
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const now = new Date();
+      setCurrentTimeStr(formatClock(now));
+      setMinutesToStart(Math.max(1, Math.ceil((sleepMonitor.getMonitorStartTime() - now.getTime()) / 60000)));
+      setClockShift({ x: Math.round(Math.random() * 16 - 8), y: Math.round(Math.random() * 16 - 8) });
+      if (lastStatusRef.current) setLiveStatus(lastStatusRef.current);
+      timer = setTimeout(tick, 60000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 50);
+    };
+    tick();
+    return () => {
+      clearTimeout(timer);
+      if (Platform.OS === 'android') {
+        Brightness.restoreSystemBrightnessAsync().catch(() => {});
+      }
+    };
+  }, [nightClockMode]);
+
+  // Switch to the dark night clock after a short time without touches while
+  // recording: a lit, constantly re-rendering screen is the biggest drain all night.
+  const scheduleAutoNightClock = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => setNightClockMode(true), AUTO_NIGHT_CLOCK_MS);
+  };
+
+  useEffect(() => {
+    if (trackingState !== 'idle' && !nightClockMode) {
+      scheduleAutoNightClock();
+    } else if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, [trackingState, nightClockMode]);
 
   useEffect(() => {
     onTrackingChange?.(trackingState !== 'idle');
@@ -128,7 +184,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
   const enterRecordingState = () => {
     clearCountdownTimer();
     setTrackingState('recording');
-    showTrackingNotification('Alvás figyelése aktív', 'FreeSnore akusztikai felügyelet');
+    showTrackingNotification(t('nightClockMonitoring'), t('monitoringActive'));
   };
 
   const startCountdownOrRecording = async () => {
@@ -141,7 +197,9 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     // frame evaluation stays idle during countdown delay.
     const started = await sleepMonitor.startMonitoring(
       (status) => {
-        if (isAppActiveRef.current) {
+        lastStatusRef.current = status;
+        // No re-render while locked or while the night clock (which ticks per minute) is shown
+        if (isAppActiveRef.current && !nightClockModeRef.current) {
           setLiveStatus(status);
         }
       },
@@ -150,8 +208,6 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         minSnoreDb: SENSITIVITY_MIN_DB[settings.sensitivity],
         maxClips: settings.maxClipsPerSession,
         saveAudio: settings.saveAudioClips,
-        antiSnoreNudge: settings.antiSnoreNudge,
-        nudgeThresholdDb: settings.nudgeThresholdDb,
       }
     );
 
@@ -175,7 +231,8 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
       if (remaining <= 0) {
         enterRecordingState();
       } else {
-        setCountdownRemainingSec(remaining);
+        // The night clock shows minutes on its own tick; skip per-second re-renders
+        if (!nightClockModeRef.current) setCountdownRemainingSec(remaining);
       }
     };
     tick();
@@ -230,8 +287,6 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
               timeline: result.timeline,
               clips: result.clips,
               factors: selectedFactors,
-              apneaSuspectCount: result.apneaSuspectCount,
-              nudgesTriggered: result.nudgesTriggered,
             };
 
             try {
@@ -258,24 +313,33 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     if (hrs > 0) {
-      return `${hrs}h ${mins}m ${secs}s`;
+      return `${hrs}${t('unitHour')} ${mins}${t('unitMin')} ${secs}${t('unitSec')}`;
     }
-    return `${mins}m ${secs}s`;
+    return `${mins}${t('unitMin')} ${secs}${t('unitSec')}`;
   };
 
   // --- RENDERING VIEWS ---
 
   // 1. NIGHT CLOCK SCREEN (Modal / Dim Mode)
-  if (nightClockMode && trackingState === 'recording') {
+  if (nightClockMode && trackingState !== 'idle') {
     return (
-      <View style={styles.nightClockContainer}>
-        <Text style={styles.nightClockTime}>{currentTimeStr}</Text>
-        <Text style={styles.nightClockStatus}>
-          {t('nightClockMonitoring')} • {liveStatus.currentDb} dB ({SNORE_LEVELS[liveStatus.category]?.label})
-        </Text>
-        <Text style={styles.nightClockElapsed}>
-          {t('nightClockElapsed')}: {formatDuration(liveStatus.durationSeconds)}
-        </Text>
+      // Any tap wakes the screen: the dimmed restore button is hard to find at night
+      <Pressable style={styles.nightClockContainer} onPress={() => setNightClockMode(false)}>
+        <View style={{ alignItems: 'center', transform: [{ translateX: clockShift.x }, { translateY: clockShift.y }] }}>
+          <Text style={styles.nightClockTime}>{currentTimeStr}</Text>
+          {trackingState === 'countdown' ? (
+            <Text style={styles.nightClockStatus}>
+              {t('countdownSub')} {minutesToStart} {t('minutesSuffix')}
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.nightClockStatus}>{t('nightClockMonitoring')}</Text>
+              <Text style={styles.nightClockElapsed}>
+                {t('nightClockElapsed')}: {formatHoursMinutes(liveStatus.durationSeconds)}
+              </Text>
+            </>
+          )}
+        </View>
 
         <TouchableOpacity
           style={styles.nightClockDismissBtn}
@@ -284,14 +348,14 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
           <Ionicons name="sunny-outline" size={20} color={COLORS.textSecondary} />
           <Text style={styles.nightClockDismissText}>{t('nightClockRestore')}</Text>
         </TouchableOpacity>
-      </View>
+      </Pressable>
     );
   }
 
   // 2. COUNTDOWN VIEW
   if (trackingState === 'countdown') {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} onTouchStart={scheduleAutoNightClock}>
         <View style={styles.centerCard}>
           <View style={styles.iconCirclePulse}>
             <Ionicons name="moon" size={48} color={COLORS.primaryLight} />
@@ -321,7 +385,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     const currentLevel = SNORE_LEVELS[liveStatus.category] || SNORE_LEVELS.quiet;
 
     return (
-      <View style={styles.container}>
+      <View style={styles.container} onTouchStart={scheduleAutoNightClock}>
         <ScrollView contentContainerStyle={styles.recordingScroll}>
           <View style={styles.recordingHeader}>
             <View style={styles.recordingDot} />
@@ -469,12 +533,12 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         <View style={styles.factorsGrid}>
           {AGGRAVATING_KEYS.map((key) => {
             const label = t(key);
-            const isSelected = selectedFactors.includes(label);
+            const isSelected = selectedFactors.includes(key);
             return (
               <TouchableOpacity
                 key={key}
                 style={[styles.factorChip, isSelected && styles.factorChipActive]}
-                onPress={() => toggleFactor(label)}
+                onPress={() => toggleFactor(key)}
               >
                 {isSelected && (
                   <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
@@ -492,12 +556,12 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         <View style={styles.factorsGrid}>
           {REMEDY_KEYS.map((key) => {
             const label = t(key);
-            const isSelected = selectedFactors.includes(label);
+            const isSelected = selectedFactors.includes(key);
             return (
               <TouchableOpacity
                 key={key}
                 style={[styles.remedyChip, isSelected && styles.remedyChipActive]}
-                onPress={() => toggleFactor(label)}
+                onPress={() => toggleFactor(key)}
               >
                 {isSelected && (
                   <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
@@ -522,7 +586,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
       </TouchableOpacity>
 
       <Text style={styles.bottomTips}>{t('chargingTip')}</Text>
-      <Text style={[styles.bottomTips, { marginTop: 2 }]}>{t('lockTip')}</Text>
+      <Text style={[styles.bottomTips, { marginTop: 2 }]}>{Platform.OS === 'ios' ? t('lockTipIos') : t('lockTipAndroid')}</Text>
     </ScrollView>
   );
 };
@@ -892,7 +956,7 @@ const styles = StyleSheet.create({
   // Night Clock styles
   nightClockContainer: {
     flex: 1,
-    backgroundColor: '#030508',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,

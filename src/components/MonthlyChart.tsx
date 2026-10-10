@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SleepSession } from '../types/session';
 import { COLORS } from '../constants/theme';
-import { t, getLanguage } from '../i18n';
+import { t, getLanguage, tFactor } from '../i18n';
+import { compareFactors } from '../services/factorStats';
 
 interface MonthlyChartProps {
   sessions: SleepSession[];
@@ -40,23 +41,7 @@ export const MonthlyChart: React.FC<MonthlyChartProps> = ({ sessions }) => {
     else if (diffDays <= 30) weekBuckets[3].sessions.push(s);
   });
 
-  // Calculate factor impact (e.g., sessions with "Alkohol" vs without, "Hanyatt fekvés" vs "Oldalfekvés")
-  const factorStats: { [factor: string]: { count: number; totalScore: number } } = {};
-  monthlySessions.forEach((s) => {
-    (s.factors || []).forEach((f) => {
-      if (!factorStats[f]) factorStats[f] = { count: 0, totalScore: 0 };
-      factorStats[f].count += 1;
-      factorStats[f].totalScore += s.snoreScore;
-    });
-  });
-
-  const factorRankings = Object.entries(factorStats)
-    .map(([factor, data]) => ({
-      factor,
-      count: data.count,
-      avgScore: Math.round(data.totalScore / data.count),
-    }))
-    .sort((a, b) => b.avgScore - a.avgScore);
+  const factorComparisons = compareFactors(monthlySessions);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return COLORS.epic;
@@ -101,25 +86,34 @@ export const MonthlyChart: React.FC<MonthlyChartProps> = ({ sessions }) => {
         })}
       </View>
 
-      {/* Factor impact */}
-      {factorRankings.length > 0 && (
+      {/* Factor impact: average score with vs. without each factor */}
+      {monthlySessions.length > 0 && (
         <View style={styles.factorSection}>
-          <Text style={styles.sectionTitle}>{t('remedyImpactTitle')}</Text>
-          {factorRankings.slice(0, 4).map((item, idx) => (
-            <View key={idx} style={styles.factorRow}>
-              <View style={styles.factorNameBox}>
-                <Text style={styles.factorName}>{item.factor}</Text>
-                <Text style={styles.factorCount}>
-                  {item.count} {t('occurrencesSuffix')}
-                </Text>
+          <Text style={styles.sectionTitle}>{t('remedyCompareTitle')}</Text>
+          {factorComparisons.length === 0 ? (
+            <Text style={styles.factorCount}>{t('remedyCompareHint')}</Text>
+          ) : (
+            factorComparisons.slice(0, 4).map((item) => (
+              <View key={item.factor} style={styles.factorRow}>
+                <View style={styles.factorNameBox}>
+                  <Text style={styles.factorName}>{tFactor(item.factor)}</Text>
+                  <Text style={styles.factorCount}>
+                    {item.withAvg} / {item.withoutAvg} {t('averagePoints')} ({item.withCount} / {item.withoutCount}{' '}
+                    {t('nightsSuffix')})
+                  </Text>
+                </View>
+                <View style={styles.factorScoreBox}>
+                  <Text
+                    style={[styles.factorScore, { color: item.deltaPct <= 0 ? COLORS.quiet : COLORS.loud }]}
+                  >
+                    {item.deltaPct <= 0
+                      ? t('remedyCompareLower', { pct: Math.abs(item.deltaPct) })
+                      : t('remedyCompareHigher', { pct: item.deltaPct })}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.factorScoreBox}>
-                <Text style={[styles.factorScore, { color: getScoreColor(item.avgScore) }]}>
-                  {item.avgScore} {t('averagePoints')}
-                </Text>
-              </View>
-            </View>
-          ))}
+            ))
+          )}
         </View>
       )}
 

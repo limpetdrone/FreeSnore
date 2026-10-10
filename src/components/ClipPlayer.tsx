@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Sharing from 'expo-sharing';
 import { SnoreClip } from '../types/session';
 import { sleepMonitor } from '../services/audioService';
 import { COLORS, SNORE_LEVELS } from '../constants/theme';
@@ -31,25 +30,6 @@ export const ClipPlayer: React.FC<ClipPlayerProps> = ({ clip, onPlayingChange })
     onPlayingChange?.(false);
   };
 
-  const handleShareClip = async () => {
-    if (!clip.audioUri || !clip.audioUri.startsWith('file://')) {
-      Alert.alert(t('saveErrorTitle'), t('noAudioFile'));
-      return;
-    }
-    const isAvailable = await Sharing.isAvailableAsync();
-    if (!isAvailable) {
-      Alert.alert(t('saveErrorTitle'), 'Sharing is not available on this device');
-      return;
-    }
-    try {
-      await Sharing.shareAsync(clip.audioUri, {
-        dialogTitle: `${t('appTitle')} - ${clip.peakDb} dB`,
-      });
-    } catch (e) {
-      console.warn('Share error:', e);
-    }
-  };
-
   const handleTogglePlay = async () => {
     if (isPlaying) {
       sleepMonitor.stopPlayback();
@@ -57,7 +37,7 @@ export const ClipPlayer: React.FC<ClipPlayerProps> = ({ clip, onPlayingChange })
     }
 
     if (!clip.audioUri || !clip.audioUri.startsWith('file://')) {
-      Alert.alert('Nincs hangfájl', 'Nincs elérhető hangfájl ehhez a részlethez.');
+      Alert.alert(t('appTitle'), t('noAudioFile'));
       return;
     }
 
@@ -130,9 +110,6 @@ export const ClipPlayer: React.FC<ClipPlayerProps> = ({ clip, onPlayingChange })
           </View>
           <View style={styles.rightActions}>
             <Text style={styles.durationText}>{clip.durationSeconds}s</Text>
-            <TouchableOpacity style={styles.shareBtn} onPress={handleShareClip}>
-              <Ionicons name="share-outline" size={16} color={COLORS.textSecondary} />
-            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -207,8 +184,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  shareBtn: {
-    padding: 4,
   },
 });
