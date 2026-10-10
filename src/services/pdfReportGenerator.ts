@@ -3,6 +3,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { SleepSession } from '../types/session';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
+import { summarizeNight } from './nightSummary';
 
 const escapeHtml = (text: string) =>
   text
@@ -13,6 +14,8 @@ const escapeHtml = (text: string) =>
     .replace(/'/g, '&#39;');
 
 export function buildPdfReportHtml(session: SleepSession): string {
+  // Single-night description only: comparisons with other nights are personal, not clinical
+  const summary = summarizeNight(session);
   const startDate = new Date(session.startTime);
   const endDate = new Date(session.endTime);
   const dateFormatted = startDate.toLocaleDateString(getLanguage() === 'hu' ? 'hu-HU' : 'en-US', {
@@ -189,6 +192,13 @@ export function buildPdfReportHtml(session: SleepSession): string {
             <div class="stat-val">${session.delayMinutes} ${t('minutesSuffix')}</div>
           </div>
         </div>
+
+        ${
+          summary
+            ? `<div class="section-title">${t('summaryTitle')}</div>
+        <p style="font-size: 12px; line-height: 1.5; margin: 0 0 8px;">${escapeHtml(summary.sentences.join(' '))}</p>`
+            : ''
+        }
 
         <div class="section-title">${t('intensityDistribution')}</div>
         <div class="distribution-bar">

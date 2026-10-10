@@ -90,6 +90,7 @@ export default function App() {
           {selectedSession ? (
             <SessionDetailScreen
               session={selectedSession}
+              history={sessions}
               onBack={() => setSelectedSession(null)}
               onDeleted={() => {
                 loadData();

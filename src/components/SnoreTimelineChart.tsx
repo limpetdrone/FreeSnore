@@ -19,6 +19,8 @@ interface SnoreTimelineChartProps {
   timeline: TimelineSample[];
   audioUri?: string; // Whole-night recording; enables tap-to-replay
   height?: number;
+  // Selects the column of this minute (offsetMinutes); pass a new object to select again
+  focus?: { minute: number };
 }
 
 interface Column {
@@ -118,12 +120,23 @@ export const SnoreTimelineChart: React.FC<SnoreTimelineChartProps> = ({
   timeline,
   audioUri,
   height = 140,
+  focus,
 }) => {
   const [chartWidth, setChartWidth] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [appliedFocus, setAppliedFocus] = useState(focus);
 
   const { columns, minutesPerColumn } = useMemo(() => buildColumns(timeline || []), [timeline]);
+
+  // Adjust the selection while rendering when a new focus request arrives
+  if (focus !== appliedFocus) {
+    setAppliedFocus(focus);
+    if (focus && timeline?.length) {
+      const index = Math.floor((focus.minute - timeline[0].offsetMinutes) / minutesPerColumn);
+      setSelected(Math.max(0, Math.min(columns.length - 1, index)));
+    }
+  }
   // Sessions recorded before snore-based timelines only have room loudness per minute
   const hasSnoreData = useMemo(() => (timeline || []).some((s) => s.snoreSeconds !== undefined), [timeline]);
 

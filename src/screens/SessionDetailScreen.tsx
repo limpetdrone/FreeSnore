@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,19 +16,24 @@ import { COLORS } from '../constants/theme';
 import { deleteSession } from '../services/storage';
 import { createPdfReportFile, sharePdfReportFile } from '../services/pdfReportGenerator';
 import { PdfPreviewModal } from '../components/PdfPreviewModal';
+import { summarizeNight } from '../services/nightSummary';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
 interface SessionDetailScreenProps {
   session: SleepSession;
+  history?: SleepSession[]; // All saved nights, for comparisons in the summary
   onBack: () => void;
   onDeleted?: () => void;
 }
 
 export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
   session,
+  history = [],
   onBack,
   onDeleted,
 }) => {
+  const summary = useMemo(() => summarizeNight(session, history), [session, history]);
+  const [timelineFocus, setTimelineFocus] = useState<{ minute: number } | undefined>();
   const [activeTab, setActiveTab] = useState<'overview' | 'clips'>('overview');
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
@@ -216,6 +221,24 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
               </View>
             </View>
 
+            {/* Night summary */}
+            {summary && (
+              <TouchableOpacity
+                style={styles.card}
+                activeOpacity={summary.longestEpisode ? 0.8 : 1}
+                disabled={!summary.longestEpisode}
+                onPress={() =>
+                  summary.longestEpisode && setTimelineFocus({ minute: summary.longestEpisode.peakMinute })
+                }
+              >
+                <Text style={styles.sectionHeading}>{t('summaryTitle')}</Text>
+                <Text style={styles.summaryText}>{summary.sentences.join(' ')}</Text>
+                {summary.longestEpisode && (
+                  <Text style={[styles.hintText, styles.summaryHint]}>{t('summaryJumpHint')}</Text>
+                )}
+              </TouchableOpacity>
+            )}
+
             {/* Timeline */}
             <View style={styles.card}>
               <Text style={styles.sectionHeading}>{t('nightNoiseTimeline')}</Text>
@@ -223,6 +246,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
               <SnoreTimelineChart
                 timeline={session.timeline}
                 audioUri={session.audioUri ?? session.clips?.[0]?.audioUri}
+                focus={timelineFocus}
               />
             </View>
 
@@ -380,6 +404,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textPrimary,
     marginBottom: 6,
+  },
+  summaryText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: COLORS.textSecondary,
+  },
+  summaryHint: {
+    marginTop: 8,
+    marginBottom: 0,
+    color: COLORS.primaryLight,
   },
   hintText: {
     fontSize: 11,
