@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   saveAudioClips: true,
   maxClipsPerSession: 15,
   keepFullRecording: false,
+  stopOnAlarm: true,
 };
 
 export async function getSessions(): Promise<SleepSession[]> {

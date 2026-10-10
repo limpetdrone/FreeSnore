@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { buildTimeline, emptyBucket } from '../timeline';
+import { audioFileOffsetSeconds, buildTimeline, emptyBucket } from '../timeline';
 import { calculateSnoreStats } from '../scoreCalculator';
 
 const minute = (db: number, snoreEvents = 0, snorePeak = 0) => ({
@@ -26,5 +26,14 @@ describe('buildTimeline', () => {
     expect(timeline.map((s) => s.category)).toEqual(['quiet', 'loud', 'light']);
     expect(timeline[1]).toEqual(expect.objectContaining({ snoreSeconds: 18, audioOffsetSeconds: 100 }));
     expect(timeline[0].audioOffsetSeconds).toBeUndefined();
+  });
+});
+
+describe('audioFileOffsetSeconds', () => {
+  it('leaves out the time the recorder was interrupted', () => {
+    const pauses = [{ start: 60_000, end: 90_000 }];
+    expect(audioFileOffsetSeconds(30_000, 0, pauses)).toBe(30); // Before the pause
+    expect(audioFileOffsetSeconds(120_000, 0, pauses)).toBe(90); // After: 30 s of pause skipped
+    expect(audioFileOffsetSeconds(75_000, 0, pauses)).toBe(60); // During: end of audio before it
   });
 });

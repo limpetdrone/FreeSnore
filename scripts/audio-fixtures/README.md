@@ -11,7 +11,7 @@ without a phone. All files are public domain (CC0); the Freesound files are the 
 
 ## More recordings (not stored in git)
 
-`freesound-snoring.tsv` lists 24 more snoring recordings: the full-length Freesound sources behind the
+`freesound-snoring.tsv` lists 25 more snoring recordings: the full-length Freesound sources behind the
 "snoring" class of the [ESC-50 dataset](https://github.com/karolpiczak/ESC-50) (whose clips are only
 5 s long). Only CC0 and CC-BY sources are listed; CC-BY needs credit to the author when the audio is
 redistributed or used for training. One of them (124958) is a 70-minute snoring night.

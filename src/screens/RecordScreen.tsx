@@ -20,7 +20,12 @@ import { calculateSnoreStats } from '../services/scoreCalculator';
 import { saveSession, getSettings, DEFAULT_SETTINGS } from '../services/storage';
 import { SleepSession, AppSettings } from '../types/session';
 import { COLORS, SNORE_LEVELS } from '../constants/theme';
-import { showTrackingNotification, dismissTrackingNotification } from '../services/notificationService';
+import {
+  showTrackingNotification,
+  dismissTrackingNotification,
+  showSessionSavedNotification,
+} from '../services/notificationService';
+import { watchAlarms } from '../../modules/alarm-watcher';
 import { t, formatHoursMinutes } from '../i18n';
 
 interface RecordScreenProps {
@@ -86,6 +91,10 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
   const isAppActiveRef = useRef<boolean>(true);
   const nightClockModeRef = useRef<boolean>(false);
   const lastStatusRef = useRef<LiveAudioStatus | null>(null);
+  const finishingRef = useRef(false);
+  const stopAlarmWatchRef = useRef<(() => void) | null>(null);
+  // Latest finishSession for callbacks registered when tracking started
+  const finishSessionRef = useRef<(reason: 'manual' | 'alarm') => Promise<void>>(async () => {});
 
   useEffect(() => {
     getSettings().then((s) => {
@@ -210,6 +219,11 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
         maxClips: settings.maxClipsPerSession,
         saveAudio: settings.saveAudioClips,
         keepFullRecording: settings.keepFullRecording,
+        // iOS: the Clock alarm (or a call) takes the microphone away from us
+        onInterrupted: () => {
+          if (settings.stopOnAlarm !== false) finishSessionRef.current('alarm');
+        },
+        resumeAfterInterruption: settings.stopOnAlarm === false,
       }
     );
 
@@ -217,6 +231,11 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
       Alert.alert(t('micErrorTitle'), t('micErrorBody'));
       deactivateKeepAwake();
       return;
+    }
+
+    // Android keeps recording through alarms; the native watcher reports them instead
+    if (settings.stopOnAlarm !== false) {
+      stopAlarmWatchRef.current = watchAlarms(() => finishSessionRef.current('alarm'));
     }
 
     if (selectedDelay === 0) {
@@ -246,7 +265,13 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     enterRecordingState();
   };
 
+  const stopAlarmWatch = () => {
+    stopAlarmWatchRef.current?.();
+    stopAlarmWatchRef.current = null;
+  };
+
   const cancelTracking = async () => {
+    stopAlarmWatch();
     clearCountdownTimer();
     await sleepMonitor.cancelMonitoring();
     deactivateKeepAwake();
@@ -254,53 +279,70 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     setTrackingState('idle');
   };
 
+  /**
+   * Ends the night and saves it. Runs once even if the user and an alarm stop it at the same time.
+   * Data is saved first: after an iOS interruption the app may be suspended at any moment.
+   */
+  const finishSession = async (reason: 'manual' | 'alarm') => {
+    if (finishingRef.current || !sleepMonitor.running) return;
+    finishingRef.current = true;
+    stopAlarmWatch();
+    clearCountdownTimer();
+
+    const result = await sleepMonitor.stopMonitoring();
+    const stats = calculateSnoreStats(result.totalSeconds, result.timeline);
+    const session: SleepSession = {
+      id: `session_${Date.now()}`,
+      startTime: new Date(result.startTime).toISOString(),
+      endTime: new Date(result.endTime).toISOString(),
+      delayMinutes: selectedDelay,
+      totalDurationSeconds: result.totalSeconds,
+      // Total snoring duration detected (matches live display)
+      snoreDurationSeconds: Math.min(result.snoreSeconds, result.totalSeconds),
+      snoreScore: stats.snoreScore,
+      quietPercent: stats.quietPercent,
+      lightPercent: stats.lightPercent,
+      loudPercent: stats.loudPercent,
+      epicPercent: stats.epicPercent,
+      peakDb: result.peakDb,
+      timeline: result.timeline,
+      clips: result.clips,
+      ...(result.audioUri ? { audioUri: result.audioUri } : {}),
+      factors: selectedFactors,
+    };
+
+    let saved = true;
+    try {
+      await saveSession(session);
+    } catch {
+      saved = false;
+      Alert.alert(t('saveErrorTitle'), t('saveErrorBody'));
+    }
+
+    deactivateKeepAwake();
+    await dismissTrackingNotification();
+    if (reason === 'alarm') {
+      if (saved) showSessionSavedNotification(t('alarmStoppedTitle'), t('alarmStoppedBody'));
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setNightClockMode(false);
+    setTrackingState('idle');
+    finishingRef.current = false;
+    onSessionFinished(session);
+  };
+
+  useEffect(() => {
+    finishSessionRef.current = finishSession;
+  });
+
   const stopAndFinishSession = async () => {
     Alert.alert(
       t('finishSleepPromptTitle'),
       t('finishSleepPromptBody'),
       [
         { text: t('continueTracking'), style: 'cancel' },
-        {
-          text: t('finishAction'),
-          style: 'default',
-          onPress: async () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            deactivateKeepAwake();
-            await dismissTrackingNotification();
-            setNightClockMode(false);
-
-            const result = await sleepMonitor.stopMonitoring();
-            const stats = calculateSnoreStats(result.totalSeconds, result.timeline);
-
-            const session: SleepSession = {
-              id: `session_${Date.now()}`,
-              startTime: new Date(result.startTime).toISOString(),
-              endTime: new Date().toISOString(),
-              delayMinutes: selectedDelay,
-              totalDurationSeconds: result.totalSeconds,
-              // Total snoring duration detected (matches live display)
-              snoreDurationSeconds: Math.min(result.snoreSeconds, result.totalSeconds),
-              snoreScore: stats.snoreScore,
-              quietPercent: stats.quietPercent,
-              lightPercent: stats.lightPercent,
-              loudPercent: stats.loudPercent,
-              epicPercent: stats.epicPercent,
-              peakDb: result.peakDb,
-              timeline: result.timeline,
-              clips: result.clips,
-              ...(result.audioUri ? { audioUri: result.audioUri } : {}),
-              factors: selectedFactors,
-            };
-
-            try {
-              await saveSession(session);
-            } catch {
-              Alert.alert(t('saveErrorTitle'), t('saveErrorBody'));
-            }
-            setTrackingState('idle');
-            onSessionFinished(session);
-          },
-        },
+        { text: t('finishAction'), style: 'default', onPress: () => finishSession('manual') },
       ]
     );
   };

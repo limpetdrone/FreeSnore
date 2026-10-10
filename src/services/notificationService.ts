@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 const NOTIFICATION_ID = 'freesnore-active-tracking';
 const CHANNEL_ID = 'freesnore-tracking';
+const SAVED_NOTIFICATION_ID = 'freesnore-session-saved';
 
 // Silent behavior during sleep (do not beep or vibrate when tracking starts)
 Notifications.setNotificationHandler({
@@ -66,6 +67,21 @@ export async function showTrackingNotification(
     });
   } catch (error) {
     console.warn('Could not display tracking notification:', error);
+  }
+}
+
+/**
+ * One-off notice that the night was ended and saved without the user (e.g. by the alarm)
+ */
+export async function showSessionSavedNotification(title: string, body: string): Promise<void> {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: SAVED_NOTIFICATION_ID,
+      content: { title, body, sound: false },
+      trigger: null,
+    });
+  } catch (error) {
+    console.warn('Could not display session saved notification:', error);
   }
 }
 

@@ -62,3 +62,24 @@ export function buildTimeline(
   }
   return timeline;
 }
+
+export interface PauseInterval {
+  start: number; // epoch ms
+  end: number;
+}
+
+/**
+ * Position of a wall-clock moment in the night's audio file. The file has no audio for the
+ * time the recorder was interrupted (call, alarm, Siri), so that time is left out.
+ */
+export function audioFileOffsetSeconds(
+  timestampMs: number,
+  recordingStartMs: number,
+  pauses: PauseInterval[]
+): number {
+  const paused = pauses.reduce(
+    (sum, p) => sum + Math.max(0, Math.min(p.end, timestampMs) - p.start),
+    0
+  );
+  return Math.max(0, (timestampMs - recordingStartMs - paused) / 1000);
+}

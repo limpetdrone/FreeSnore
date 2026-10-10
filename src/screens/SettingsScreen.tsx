@@ -149,6 +149,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
 
         <View style={[styles.switchRow, { borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12, marginTop: 12 }]}>
           <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={styles.switchLabel}>{t('stopOnAlarmTitle')}</Text>
+            <Text style={styles.switchDesc}>{t('stopOnAlarmDesc')}</Text>
+          </View>
+          <Switch
+            value={settings.stopOnAlarm !== false}
+            onValueChange={(val) => updateSetting('stopOnAlarm', val)}
+            trackColor={{ false: COLORS.surfaceHighlight, true: COLORS.primary }}
+          />
+        </View>
+
+        <View style={[styles.switchRow, { borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12, marginTop: 12 }]}>
+          <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={styles.switchLabel}>{t('saveClipsTitle')}</Text>
             <Text style={styles.switchDesc}>{t('saveClipsDesc')}</Text>
           </View>

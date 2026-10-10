@@ -11,7 +11,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { SnoreIntensity, SnoreClip, TimelineSample } from '../types/session';
 import { SnoreEventCandidate, snoreClassifier } from './snoreDetector';
-import { MinuteBucket, buildTimeline, emptyBucket } from './timeline';
+import { MinuteBucket, PauseInterval, audioFileOffsetSeconds, buildTimeline, emptyBucket } from './timeline';
 
 export interface LiveAudioStatus {
   currentDb: number;
@@ -27,11 +27,15 @@ export interface MonitoringOptions {
   maxClips: number;
   saveAudio: boolean;
   keepFullRecording?: boolean; // Keep the audio file even if no snoring was detected
+  // Another app took the microphone (iOS: alarm, call, Siri). `atMs` is when audio last came in.
+  onInterrupted?: (atMs: number) => void;
+  resumeAfterInterruption?: boolean; // Otherwise the caller is expected to stop the session
 }
 
 export interface MonitoringResult {
   audioUri: string | null;
   startTime: number; // Actual monitoring start timestamp (epoch ms)
+  endTime: number; // End of monitoring (epoch ms); the interruption time if the recorder was interrupted
   totalSeconds: number;
   snoreSeconds: number;
   peakDb: number;
@@ -77,6 +81,10 @@ export class SleepMonitorService {
     saveAudio: true,
   };
   private recordingStartTime: number = 0; // Timestamp when audio file recording starts
+  private lastRecordingSeenAt: number = 0; // Last tick at which the recorder was still recording
+  private interruptedAt: number | null = null;
+  private lastResumeAttempt: number = 0;
+  private pauses: PauseInterval[] = [];
   private monitorStartTime: number = 0; // Timestamp when snore classification begins (after delay)
   private lastEmitTime: number = 0;
   private currentDb: number = 30;
@@ -163,6 +171,9 @@ export class SleepMonitorService {
       recorder.record();
 
       this.recordingStartTime = Date.now();
+      this.lastRecordingSeenAt = this.recordingStartTime;
+      this.interruptedAt = null;
+      this.pauses = [];
       this.monitorStartTime = this.recordingStartTime + options.delaySeconds * 1000;
       this.lastEmitTime = 0;
       this.isRunning = true;
@@ -180,6 +191,7 @@ export class SleepMonitorService {
   private onFrameTick() {
     if (!this.isRunning || !this.recorder) return;
     const now = Date.now();
+    if (!this.checkRecorderRunning(now)) return;
     if (now < this.monitorStartTime) return;
 
     let db = 32;
@@ -200,6 +212,43 @@ export class SleepMonitorService {
         snoringSeconds: this.snoringSeconds,
       });
     }
+  }
+
+  /**
+   * iOS stops our recorder when another app takes the audio session (Clock alarm, call, Siri)
+   * and expo-audio does not report it; the native `isRecording` flag does show it.
+   * Frames are skipped meanwhile, so no fake quiet minutes are recorded.
+   */
+  private checkRecorderRunning(now: number): boolean {
+    const recorder = this.recorder;
+    if (!recorder) return false;
+
+    if (recorder.isRecording) {
+      if (this.interruptedAt !== null) {
+        this.pauses.push({ start: this.interruptedAt, end: now });
+        this.interruptedAt = null;
+      }
+      this.lastRecordingSeenAt = now;
+      return true;
+    }
+
+    if (this.interruptedAt === null) {
+      // The app may have been suspended right after the interruption: the last tick that
+      // still saw the recorder running is the best estimate of when it happened
+      this.interruptedAt = Math.min(now, this.lastRecordingSeenAt + FRAME_INTERVAL_MS);
+      this.options.onInterrupted?.(this.interruptedAt);
+    }
+    if (this.options.resumeAfterInterruption && now - this.lastResumeAttempt > 5000) {
+      this.lastResumeAttempt = now;
+      try {
+        // expo-audio still believes it is recording: pause() syncs its state so record() resumes
+        recorder.pause();
+        recorder.record();
+      } catch {
+        // Session still taken by the other app; retry later
+      }
+    }
+    return false;
   }
 
   private elapsedSeconds(now: number): number {
@@ -235,7 +284,7 @@ export class SleepMonitorService {
     this.snoringMs += event.durationMs;
     this.snoringSeconds = Math.round(this.snoringMs / 1000);
 
-    const offsetSeconds = Math.max(0, (event.startTime - this.recordingStartTime) / 1000);
+    const offsetSeconds = audioFileOffsetSeconds(event.startTime, this.recordingStartTime, this.pauses);
     const bucket = this.bucketAt(event.startTime);
     bucket.snoreMs += event.durationMs;
     bucket.snorePeakSum += event.peakDb;
@@ -287,13 +336,12 @@ export class SleepMonitorService {
     this.recorder = null;
     if (recorder) {
       try {
-        if (recorder.isRecording) {
-          await recorder.stop();
-        }
-        uri = recorder.uri;
+        // Also after an interruption (isRecording false): stop() finalizes the m4a file
+        await recorder.stop();
       } catch (err) {
         console.warn('Error stopping recording:', err);
       }
+      uri = recorder.uri;
       recorder.release();
     }
 
@@ -330,7 +378,8 @@ export class SleepMonitorService {
   async stopMonitoring(): Promise<MonitoringResult> {
     this.isRunning = false;
     this.onStatusCallback = null;
-    const now = Date.now();
+    // A night cut short by an interruption ends there, not when the user opens the app
+    const now = this.interruptedAt ?? Date.now();
     // If stopped during delay, monitoring was active for 0 seconds
     const startTime = Math.min(this.monitorStartTime, now);
     const totalSeconds = Math.max(1, Math.floor((now - startTime) / 1000));
@@ -351,6 +400,7 @@ export class SleepMonitorService {
     return {
       audioUri: finalUri,
       startTime,
+      endTime: now,
       totalSeconds,
       snoreSeconds: this.snoringSeconds,
       peakDb: this.peakDb,
