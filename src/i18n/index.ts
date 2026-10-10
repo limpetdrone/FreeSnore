@@ -98,6 +98,7 @@ export const translations = {
     timelineEmpty: 'Nincs elegendő adat az éjszakai idővonalhoz',
     timelineSnoreDetail: 'Horkolás: {seconds} mp · {db} dB ({level})',
     timelineNoSnore: 'Nem volt horkolás',
+    timelineNoData: 'Erről az időszakról nincs adat',
     timelinePlay: 'Részlet lejátszása',
     timelineStop: 'Lejátszás leállítása',
     habitsAndRemedies: 'Körülmények és alkalmazott gyógymódok',
@@ -172,6 +173,9 @@ export const translations = {
     pdfGeneratedDate: 'Létrehozva: {date}',
     pdfDoctorDisclaimer:
       'FIGYELEM: Ez a jelentés nem minősül orvosi diagnózisnak. Az akusztikai adatok orvosi konzultáció vagy alváslaboros vizsgálat kiegészítésére szolgálnak.',
+    pdfPreviewTitle: 'Jelentés Előnézete',
+    pdfShareReport: 'Megosztás / Mentés (PDF)',
+    generatingPdf: 'Jelentés készítése...',
   },
 
   en: {
@@ -269,6 +273,7 @@ export const translations = {
     timelineEmpty: 'Not enough data for the night timeline',
     timelineSnoreDetail: 'Snoring: {seconds} s · {db} dB ({level})',
     timelineNoSnore: 'No snoring',
+    timelineNoData: 'No data for this period',
     timelinePlay: 'Play snippet',
     timelineStop: 'Stop playback',
     habitsAndRemedies: 'Tracked Factors & Applied Remedies',
@@ -343,6 +348,9 @@ export const translations = {
     pdfGeneratedDate: 'Generated: {date}',
     pdfDoctorDisclaimer:
       'NOTICE: This report is for informational purposes only and does not constitute a clinical medical diagnosis. It can assist your physician or sleep specialist in evaluating sleep breathing patterns.',
+    pdfPreviewTitle: 'Report Preview',
+    pdfShareReport: 'Share / Save (PDF)',
+    generatingPdf: 'Generating report...',
   },
 };
 

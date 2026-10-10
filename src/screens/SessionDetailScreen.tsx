@@ -14,7 +14,8 @@ import { SnoreTimelineChart } from '../components/SnoreTimelineChart';
 import { ClipPlayer } from '../components/ClipPlayer';
 import { COLORS } from '../constants/theme';
 import { deleteSession } from '../services/storage';
-import { generateAndSharePdfReport } from '../services/pdfReportGenerator';
+import { createPdfReportFile, sharePdfReportFile } from '../services/pdfReportGenerator';
+import { PdfPreviewModal } from '../components/PdfPreviewModal';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
 interface SessionDetailScreenProps {
@@ -29,7 +30,10 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
   onDeleted,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'clips'>('overview');
-  const [isExporting, setIsExporting] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfUri, setPdfUri] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isSharingPdf, setIsSharingPdf] = useState(false);
 
   const startDate = new Date(session.startTime);
   const endDate = new Date(session.endTime);
@@ -65,10 +69,34 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
     );
   };
 
-  const handleExportPdf = async () => {
-    setIsExporting(true);
-    await generateAndSharePdfReport(session);
-    setIsExporting(false);
+  const handleOpenPdfPreview = async () => {
+    setShowPdfPreview(true);
+    if (!pdfUri) {
+      setIsGeneratingPdf(true);
+      const result = await createPdfReportFile(session);
+      if (result) {
+        setPdfUri(result.uri);
+      }
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleShareFromPreview = async () => {
+    if (!pdfUri) {
+      setIsGeneratingPdf(true);
+      const result = await createPdfReportFile(session);
+      setIsGeneratingPdf(false);
+      if (result) {
+        setPdfUri(result.uri);
+        setIsSharingPdf(true);
+        await sharePdfReportFile(result.uri);
+        setIsSharingPdf(false);
+      }
+    } else {
+      setIsSharingPdf(true);
+      await sharePdfReportFile(pdfUri);
+      setIsSharingPdf(false);
+    }
   };
 
   return (
@@ -87,8 +115,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={[styles.iconBtn, { marginRight: 4 }]}
-            onPress={handleExportPdf}
-            disabled={isExporting}
+            onPress={handleOpenPdfPreview}
           >
             <Ionicons name="document-text-outline" size={22} color={COLORS.primaryLight} />
           </TouchableOpacity>
@@ -214,7 +241,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
             )}
 
             {/* Export PDF Button Card */}
-            <TouchableOpacity style={styles.pdfExportBtn} onPress={handleExportPdf} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.pdfExportBtn} onPress={handleOpenPdfPreview} activeOpacity={0.8}>
               <Ionicons name="document-text" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
               <Text style={styles.pdfExportBtnText}>{t('exportPdfBtn')}</Text>
             </TouchableOpacity>
@@ -236,6 +263,17 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
           </View>
         )}
       </ScrollView>
+
+      {/* PDF Report Preview & Share Modal */}
+      <PdfPreviewModal
+        visible={showPdfPreview}
+        session={session}
+        pdfUri={pdfUri}
+        isLoading={isGeneratingPdf}
+        isSharing={isSharingPdf}
+        onClose={() => setShowPdfPreview(false)}
+        onShare={handleShareFromPreview}
+      />
     </View>
   );
 };

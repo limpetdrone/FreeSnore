@@ -11,6 +11,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { SnoreIntensity, SnoreClip, TimelineSample } from '../types/session';
 import { SnoreEventCandidate, snoreClassifier } from './snoreDetector';
+import { MinuteBucket, buildTimeline, emptyBucket } from './timeline';
 
 export interface LiveAudioStatus {
   currentDb: number;
@@ -38,26 +39,6 @@ export interface MonitoringResult {
 }
 
 const FRAME_INTERVAL_MS = 250;
-
-interface MinuteBucket {
-  dbSum: number;
-  frames: number;
-  snoreMs: number;
-  snorePeakSum: number;
-  snoreEvents: number;
-  loudestSnoreDb: number;
-  loudestSnoreOffset: number; // Seconds into the audio file
-}
-
-const emptyBucket = (): MinuteBucket => ({
-  dbSum: 0,
-  frames: 0,
-  snoreMs: 0,
-  snorePeakSum: 0,
-  snoreEvents: 0,
-  loudestSnoreDb: 0,
-  loudestSnoreOffset: 0,
-});
 
 // Mono, 22 kHz, 32 kbps AAC: optimal for snore frequencies (<1.5 kHz), low CPU and storage footprint
 const SLEEP_RECORDING_OPTIONS = {
@@ -356,30 +337,7 @@ export class SleepMonitorService {
     const keepAudio = this.options.saveAudio && this.snoringMs > 0;
     const finalUri = await this.releaseRecorder(!keepAudio);
 
-    // Compile timeline samples
-    const timeline: TimelineSample[] = [];
-    const minutes = Object.keys(this.minuteBuckets).map(Number).sort((a, b) => a - b);
-
-    for (const m of minutes) {
-      const b = this.minuteBuckets[m];
-      if (b.frames === 0) continue;
-
-      const sampleTime = new Date(startTime + m * 60 * 1000);
-      const hh = sampleTime.getHours().toString().padStart(2, '0');
-      const mm = sampleTime.getMinutes().toString().padStart(2, '0');
-      const snoreDb = b.snoreEvents > 0 ? Math.round(b.snorePeakSum / b.snoreEvents) : 0;
-
-      timeline.push({
-        offsetMinutes: m,
-        timeFormatted: `${hh}:${mm}`,
-        db: Math.round(b.dbSum / b.frames),
-        // Minute category reflects detected snoring only, not room loudness (a fan is not a snore)
-        category: b.snoreEvents > 0 ? this.classifyDb(snoreDb) : 'quiet',
-        snoreSeconds: Math.round(b.snoreMs / 1000),
-        snoreDb,
-        ...(b.snoreEvents > 0 && finalUri ? { audioOffsetSeconds: b.loudestSnoreOffset } : {}),
-      });
-    }
+    const timeline = buildTimeline(this.minuteBuckets, startTime, !!finalUri);
 
     // Assign final audio URI to recorded clips, in chronological order
     const clips = finalUri

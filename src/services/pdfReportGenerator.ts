@@ -12,52 +12,46 @@ const escapeHtml = (text: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-export async function generateAndSharePdfReport(session: SleepSession): Promise<boolean> {
-  try {
-    const isAvailable = await Sharing.isAvailableAsync();
-    if (!isAvailable) {
-      Alert.alert(t('saveErrorTitle'), t('sharingUnavailable'));
-      return false;
-    }
+export function buildPdfReportHtml(session: SleepSession): string {
+  const startDate = new Date(session.startTime);
+  const endDate = new Date(session.endTime);
+  const dateFormatted = startDate.toLocaleDateString(getLanguage() === 'hu' ? 'hu-HU' : 'en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  });
 
-    const startDate = new Date(session.startTime);
-    const endDate = new Date(session.endTime);
-    const dateFormatted = startDate.toLocaleDateString(getLanguage() === 'hu' ? 'hu-HU' : 'en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'long',
-    });
+  const totalDuration = formatHoursMinutes(session.totalDurationSeconds);
+  const snoreDuration = formatHoursMinutes(session.snoreDurationSeconds);
 
-    const totalDuration = formatHoursMinutes(session.totalDurationSeconds);
-    const snoreDuration = formatHoursMinutes(session.snoreDurationSeconds);
+  const hasSnoreData = (session.timeline || []).some((s) => s.snoreSeconds !== undefined);
+  const timelineBarsHtml = (session.timeline || [])
+    .map((sample) => {
+      // Snore time per minute (40% of the minute fills the bar); legacy sessions: room loudness
+      const ratio = hasSnoreData ? (sample.snoreSeconds ?? 0) / 24 : (sample.db - 25) / 60;
+      const heightPct = Math.min(100, Math.max(4, ratio * 100));
+      let col = '#10B981';
+      if (sample.category === 'epic') col = '#EF4444';
+      else if (sample.category === 'loud') col = '#F97316';
+      else if (sample.category === 'light') col = '#FBBF24';
+      return `<div style="flex: 1; height: ${heightPct}%; background-color: ${col}; border-radius: 2px; margin: 0 1px;"></div>`;
+    })
+    .join('');
 
-    const hasSnoreData = (session.timeline || []).some((s) => s.snoreSeconds !== undefined);
-    const timelineBarsHtml = (session.timeline || [])
-      .map((sample) => {
-        // Snore time per minute (40% of the minute fills the bar); legacy sessions: room loudness
-        const ratio = hasSnoreData ? (sample.snoreSeconds ?? 0) / 24 : (sample.db - 25) / 60;
-        const heightPct = Math.min(100, Math.max(4, ratio * 100));
-        let col = '#10B981';
-        if (sample.category === 'epic') col = '#EF4444';
-        else if (sample.category === 'loud') col = '#F97316';
-        else if (sample.category === 'light') col = '#FBBF24';
-        return `<div style="flex: 1; height: ${heightPct}%; background-color: ${col}; border-radius: 2px; margin: 0 1px;"></div>`;
-      })
-      .join('');
+  const factorsHtml = (session.factors || [])
+    .map(
+      (f) =>
+        `<span style="background: #EEF2F6; color: #1E293B; padding: 4px 10px; border-radius: 12px; font-size: 11px; margin-right: 6px; display: inline-block; margin-bottom: 4px;">${escapeHtml(tFactor(f))}</span>`
+    )
+    .join('');
 
-    const factorsHtml = (session.factors || [])
-      .map(
-        (f) =>
-          `<span style="background: #EEF2F6; color: #1E293B; padding: 4px 10px; border-radius: 12px; font-size: 11px; margin-right: 6px; display: inline-block; margin-bottom: 4px;">${escapeHtml(tFactor(f))}</span>`
-      )
-      .join('');
-
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>FreeSnore Report</title>
         <title>FreeSnore Report</title>
         <style>
           body {
@@ -227,22 +221,46 @@ export async function generateAndSharePdfReport(session: SleepSession): Promise<
         </div>
       </body>
       </html>
-    `;
+  `;
+}
 
+export async function createPdfReportFile(session: SleepSession): Promise<{ uri: string } | null> {
+  try {
+    const html = buildPdfReportHtml(session);
     const { uri } = await Print.printToFileAsync({
-      html: htmlContent,
+      html,
       base64: false,
     });
+    return { uri };
+  } catch (error) {
+    console.error('Failed to create PDF report file:', error);
+    Alert.alert(t('saveErrorTitle'), 'Failed to create PDF report.');
+    return null;
+  }
+}
+
+export async function sharePdfReportFile(uri: string): Promise<boolean> {
+  try {
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert(t('saveErrorTitle'), t('sharingUnavailable'));
+      return false;
+    }
 
     await Sharing.shareAsync(uri, {
       UTI: '.pdf',
       mimeType: 'application/pdf',
       dialogTitle: t('pdfReportTitle'),
     });
-
     return true;
   } catch (error) {
-    console.error('Failed to generate PDF report:', error);
+    console.error('Failed to share PDF report:', error);
     return false;
   }
+}
+
+export async function generateAndSharePdfReport(session: SleepSession): Promise<boolean> {
+  const result = await createPdfReportFile(session);
+  if (!result) return false;
+  return sharePdfReportFile(result.uri);
 }

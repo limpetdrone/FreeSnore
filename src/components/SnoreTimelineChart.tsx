@@ -22,8 +22,9 @@ interface SnoreTimelineChartProps {
 }
 
 interface Column {
-  start: TimelineSample;
-  end: TimelineSample;
+  startLabel: string;
+  endLabel: string;
+  samples: number; // Recorded minutes in this column (0 = gap, e.g. paused analysis)
   snoreSeconds: number;
   snoreDb: number;
   db: number;
@@ -64,40 +65,53 @@ const levelLabel = (category: SnoreIntensity) =>
     )[category]
   );
 
-function buildColumns(timeline: TimelineSample[]): Column[] {
-  const groupSize = Math.ceil(timeline.length / MAX_COLUMNS);
-  const columns: Column[] = [];
-  for (let i = 0; i < timeline.length; i += groupSize) {
-    const group = timeline.slice(i, i + groupSize);
-    let category: SnoreIntensity = 'quiet';
-    let snoreSeconds = 0;
-    let snoreDbSum = 0;
-    let snoreMinutes = 0;
-    let loudest = 0;
-    let replayOffset: number | undefined;
-    for (const s of group) {
-      if (CATEGORY_RANK[s.category] > CATEGORY_RANK[category]) category = s.category;
-      snoreSeconds += s.snoreSeconds ?? 0;
-      if (s.snoreDb) {
-        snoreDbSum += s.snoreDb;
-        snoreMinutes++;
-        if (s.audioOffsetSeconds !== undefined && s.snoreDb > loudest) {
-          loudest = s.snoreDb;
-          replayOffset = s.audioOffsetSeconds;
-        }
+const clockLabel = (first: TimelineSample, minutesLater: number) => {
+  const [h, m] = first.timeFormatted.split(':').map(Number);
+  const total = (h * 60 + m + minutesLater) % (24 * 60);
+  return `${Math.floor(total / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}`;
+};
+
+/** Columns are laid out by time (offsetMinutes), so gaps in the data keep the axis true. */
+function buildColumns(timeline: TimelineSample[]): { columns: Column[]; minutesPerColumn: number } {
+  if (timeline.length === 0) return { columns: [], minutesPerColumn: 1 };
+  const first = timeline[0];
+  const span = timeline[timeline.length - 1].offsetMinutes - first.offsetMinutes + 1;
+  const minutesPerColumn = Math.max(1, Math.ceil(span / MAX_COLUMNS));
+  const count = Math.ceil(span / minutesPerColumn);
+
+  const columns: Column[] = Array.from({ length: count }, (_, i) => ({
+    startLabel: clockLabel(first, i * minutesPerColumn),
+    endLabel: clockLabel(first, (i + 1) * minutesPerColumn - 1),
+    samples: 0,
+    snoreSeconds: 0,
+    snoreDb: 0,
+    db: 0,
+    category: 'quiet',
+  }));
+  const loudest: number[] = new Array(count).fill(0);
+  const snoreMinutes: number[] = new Array(count).fill(0);
+
+  for (const s of timeline) {
+    const i = Math.floor((s.offsetMinutes - first.offsetMinutes) / minutesPerColumn);
+    const c = columns[i];
+    c.samples++;
+    c.db += s.db;
+    c.snoreSeconds += s.snoreSeconds ?? 0;
+    if (CATEGORY_RANK[s.category] > CATEGORY_RANK[c.category]) c.category = s.category;
+    if (s.snoreDb) {
+      c.snoreDb += s.snoreDb;
+      snoreMinutes[i]++;
+      if (s.audioOffsetSeconds !== undefined && s.snoreDb > loudest[i]) {
+        loudest[i] = s.snoreDb;
+        c.replayOffset = s.audioOffsetSeconds;
       }
     }
-    columns.push({
-      start: group[0],
-      end: group[group.length - 1],
-      snoreSeconds,
-      snoreDb: snoreMinutes > 0 ? Math.round(snoreDbSum / snoreMinutes) : 0,
-      db: Math.round(group.reduce((sum, s) => sum + s.db, 0) / group.length),
-      category,
-      replayOffset,
-    });
   }
-  return columns;
+  columns.forEach((c, i) => {
+    if (c.samples > 0) c.db = Math.round(c.db / c.samples);
+    if (snoreMinutes[i] > 0) c.snoreDb = Math.round(c.snoreDb / snoreMinutes[i]);
+  });
+  return { columns, minutesPerColumn };
 }
 
 export const SnoreTimelineChart: React.FC<SnoreTimelineChartProps> = ({
@@ -109,10 +123,9 @@ export const SnoreTimelineChart: React.FC<SnoreTimelineChartProps> = ({
   const [selected, setSelected] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const columns = useMemo(() => buildColumns(timeline || []), [timeline]);
+  const { columns, minutesPerColumn } = useMemo(() => buildColumns(timeline || []), [timeline]);
   // Sessions recorded before snore-based timelines only have room loudness per minute
   const hasSnoreData = useMemo(() => (timeline || []).some((s) => s.snoreSeconds !== undefined), [timeline]);
-  const minutesPerColumn = Math.ceil((timeline?.length || 1) / MAX_COLUMNS);
 
   // Stop replay when leaving the screen
   useEffect(() => () => sleepMonitor.stopPlayback(), []);
@@ -127,6 +140,7 @@ export const SnoreTimelineChart: React.FC<SnoreTimelineChartProps> = ({
 
   const barAreaHeight = height - 18;
   const barHeight = (c: Column) => {
+    if (c.samples === 0) return 0; // No data for this period
     const ratio = hasSnoreData
       ? c.snoreSeconds / (minutesPerColumn * 60) / FULL_BAR_SNORE_RATIO
       : (c.db - 25) / 60;
@@ -166,7 +180,7 @@ export const SnoreTimelineChart: React.FC<SnoreTimelineChartProps> = ({
   };
 
   const rangeLabel = (c: Column) =>
-    c.start === c.end ? c.start.timeFormatted : `${c.start.timeFormatted} – ${c.end.timeFormatted}`;
+    c.startLabel === c.endLabel ? c.startLabel : `${c.startLabel} – ${c.endLabel}`;
 
   const labelIndices = [0, 0.25, 0.5, 0.75, 1]
     .map((f) => Math.round(f * (columns.length - 1)))
@@ -179,7 +193,9 @@ export const SnoreTimelineChart: React.FC<SnoreTimelineChartProps> = ({
         <View style={styles.tooltipRow}>
           <View style={styles.tooltipInfo}>
             <Text style={styles.tooltipTime}>{rangeLabel(selectedColumn)}</Text>
-            {hasSnoreData ? (
+            {selectedColumn.samples === 0 ? (
+              <Text style={styles.tooltipValue}>{t('timelineNoData')}</Text>
+            ) : hasSnoreData ? (
               <Text style={[styles.tooltipValue, { color: categoryColor(selectedColumn.category) }]}>
                 {selectedColumn.snoreSeconds > 0
                   ? t('timelineSnoreDetail', {
@@ -235,7 +251,7 @@ export const SnoreTimelineChart: React.FC<SnoreTimelineChartProps> = ({
       <View style={styles.timeAxis}>
         {labelIndices.map((idx) => (
           <Text key={`time-marker-${idx}`} style={styles.timeLabel}>
-            {columns[idx].start.timeFormatted}
+            {columns[idx].startLabel}
           </Text>
         ))}
       </View>

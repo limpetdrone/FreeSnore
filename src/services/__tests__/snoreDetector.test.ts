@@ -58,6 +58,29 @@ describe('SnoreClassifier', () => {
     expect(countEvents(speech, 60).events).toBe(0);
   });
 
+  it('stops counting when talking follows a snoring episode', () => {
+    const speech = (t: number) => ((t % 1250) < 750 ? 60 : 36);
+    const signal = (t: number) => (t < 30000 ? snoring(60, 33)(t) : speech(t));
+    // 30 s of snoring = 8 breaths; the following minute of speech must add (almost) nothing
+    expect(countEvents(signal, 90).events).toBeLessThanOrEqual(9);
+  });
+
+  it('keeps counting snoring through a skipped breath and a stray noise', () => {
+    // Breaths every 4 s; the one at 20 s is silent and a 0.5 s knock occurs at 26.5 s
+    const onsets = [0, 4000, 8000, 12000, 16000, 24000, 28000, 32000, 36000];
+    const signal = (t: number) => (t >= 26500 && t < 27000 ? 70 : burstsAt(onsets)(t));
+    expect(countEvents(signal, 45).events).toBe(9);
+  });
+
+  it('treats a snore with a short dip in the middle as one breath', () => {
+    // 3 s snores with a 250 ms dip, every 5 s: must not be split into off-rhythm fragments
+    const signal = (t: number) => {
+      const p = t % 5000;
+      return p < 3000 && (p < 1250 || p >= 1500) ? 60 : 33;
+    };
+    expect(countEvents(signal, 60).events).toBeGreaterThanOrEqual(11);
+  });
+
   it('respects the sensitivity threshold', () => {
     // 50 dB snores pass the medium (44 dB) threshold but not the low-sensitivity (52 dB) one
     expect(countEvents(snoring(50, 33), 60, 44).events).toBeGreaterThan(0);
