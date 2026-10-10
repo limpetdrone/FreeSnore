@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>FreeSnore — Ingyenes, Helyi Horkolás- és Alváselemző App</title>
+  <meta name="description" content="A FreeSnore egy 100% ingyenes, nyílt forráskódú és biztonságos horkolásfigyelő iOS-re és Androidra. Nincsenek előfizetések, nincsenek felhős adatfeltöltések.">
+  <meta name="theme-color" content="#070913">
+  
+  <!-- Open Graph / Social Media -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="FreeSnore — Ingyenes Horkolásfigyelő App">
+  <meta property="og:description" content="Ismerd meg az alvásodat előfizetések és felhős adatgyűjtés nélkül. Csatlakozz az iOS TestFlight bétához!">
+  <meta property="og:image" content="assets/icon.png">
+
+  <link rel="icon" type="image/png" href="assets/icon.png">
+  <link rel="apple-touch-icon" href="assets/icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-glow-top"></div>
+  <div class="bg-glow-mid"></div>
+
+  <!-- Header Navigation -->
+  <header class="site-header">
+    <div class="nav-container">
+      <a href="#" class="logo-row">
+        <img src="assets/icon.png" alt="FreeSnore Logo" class="logo-img">
+        <span class="logo-text">FreeSnore</span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#features" data-i18n="navFeatures">Funkciók</a>
+        <a href="#comparison" data-i18n="navComparison">Összehasonlítás</a>
+        <a href="#how-it-works" data-i18n="navHowItWorks">Hogyan működik</a>
+        
+        <div class="lang-switch">
+          <button class="lang-btn active" data-lang="hu">HU</button>
+          <button class="lang-btn" data-lang="en">EN</button>
+        </div>
+
+        <a href="https://testflight.apple.com" target="_blank" rel="noopener" class="nav-cta-btn" data-i18n="navTestFlight">TestFlight Béta</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <div class="hero-pill">
+        <span class="hero-pill-dot"></span>
+        <span data-i18n="heroPill">100% Ingyenes & Nyílt Forráskódú Horkolásfigyelő</span>
+      </div>
+
+      <h1 class="hero-title" data-i18n="heroTitle">
+        Ismerd meg az alvásod. <span class="gradient-text">Fizetős falak nélkül.</span>
+      </h1>
+
+      <p class="hero-subtitle" data-i18n="heroSubtitle">
+        A FreeSnore egy prémium, teljesen helyben futó horkolás- és alváselemző app iOS-re és Androidra. Nincsenek havidíjak, nincsenek felhős adatfeltöltések.
+      </p>
+
+      <div class="hero-actions">
+        <a href="https://testflight.apple.com" target="_blank" rel="noopener" class="btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 1.01-2.87-1 .04-2.17.67-2.78 1.41-.54.63-.99 1.7-.87 2.76 1.13.09 2.03-.55 2.64-1.3"/>
+          </svg>
+          <span data-i18n="btnTestFlight">Csatlakozás a TestFlight Bétához</span>
+        </a>
+
+        <a href="https://github.com/limpetdrone/FreeSnore" target="_blank" rel="noopener" class="btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span data-i18n="btnGithub">Forráskód a GitHubon</span>
+        </a>
+      </div>
+
+      <div class="hero-badges">
+        <div class="hero-badge-item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span data-i18n="badgePrivate">100% Helyi adatkezelés</span>
+        </div>
+        <div class="hero-badge-item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span data-i18n="badgeBattery">Akkukímélő OLED óra</span>
+        </div>
+        <div class="hero-badge-item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span data-i18n="badgeFree">Örökké ingyenes (Open Source)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Phone Mockup -->
+    <div class="mockup-wrapper">
+      <div class="phone-card">
+        <div class="phone-screen">
+          <div class="phone-header">
+            <div class="phone-title">
+              <span class="phone-live-dot"></span>
+              <span data-i18n="phoneStatus">Alvás & Horkolás Figyelése</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">22:45</span>
+          </div>
+
+          <div class="phone-score-box">
+            <div class="phone-score-num">18</div>
+            <div class="phone-score-label" data-i18n="phoneScoreLabel">Horkolási Pontszám</div>
+          </div>
+
+          <div class="phone-timeline">
+            <div class="timeline-bar" style="height: 20%;"></div>
+            <div class="timeline-bar" style="height: 35%;"></div>
+            <div class="timeline-bar" style="height: 15%;"></div>
+            <div class="timeline-bar" style="height: 70%; background: var(--status-loud);"></div>
+            <div class="timeline-bar" style="height: 85%; background: var(--status-epic);"></div>
+            <div class="timeline-bar" style="height: 30%;"></div>
+            <div class="timeline-bar" style="height: 25%;"></div>
+            <div class="timeline-bar" style="height: 15%;"></div>
+            <div class="timeline-bar" style="height: 50%; background: var(--status-light);"></div>
+            <div class="timeline-bar" style="height: 20%;"></div>
+            <div class="timeline-bar" style="height: 10%;"></div>
+          </div>
+
+          <div class="phone-chips-row">
+            <span class="phone-chip">✓ Oldalfekvés</span>
+            <span class="phone-chip">✓ Orrtágító tapasz</span>
+            <span class="phone-chip">7h 45m alvás</span>
+          </div>
+
+          <div class="phone-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span data-i18n="phoneBtn">Elemzés Megtekintése</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features Grid -->
+  <section id="features" class="features-section">
+    <div class="section-head">
+      <span class="tag" data-i18n="featuresTag">Korszerű Technológia</span>
+      <h2 data-i18n="featuresTitle">Minden funkció, amire szükséged van a nyugodt éjszakákhoz</h2>
+      <p data-i18n="featuresSub">Az elalvástól az ébredésig precízen kíséri végig az alvásodat, anélkül, hogy lemerítené a telefonodat.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </div>
+        <h3 data-i18n="feat1Title">Okos Horkolásdetektálás</h3>
+        <p data-i18n="feat1Desc">A légzési ciklusok ritmikusságán és időtartamán alapuló szűrés megkülönbözteti a valódi horkolást a háttérzajoktól és a forgolódástól.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3 data-i18n="feat2Title">Elalvási Késleltetés</h3>
+        <p data-i18n="feat2Desc">A mikrofon azonnal csendben aktiválódik az iOS szabályoknak megfelelően, de a tényleges figyelés csak a beállított elalvási idő után indul.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <h3 data-i18n="feat3Title">Éjszakai Zaj-Idővonal</h3>
+        <p data-i18n="feat3Desc">Percről percre láthatod, mikor és milyen hangerővel horkoltál az éjszaka folyamán, interaktív visszajátszással.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <h3 data-i18n="feat4Title">Kiváltó Okok & Gyógymódok</h3>
+        <p data-i18n="feat4Desc">Kövesd nyomon, hogy a hanyatt alvás, alkohol, orrdugulás ront-e a helyzeten, és hogy az orrtapasz vagy oldalfekvés mennyit segít.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <h3 data-i18n="feat5Title">Orvosi PDF Jelentés Előnézettel</h3>
+        <p data-i18n="feat5Desc">Klinikai szintű alvásjelentést exportálhatsz és oszthatsz meg a szakorvosoddal, amit a küldés előtt teljes egészében áttekinthetsz.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </div>
+        <h3 data-i18n="feat6Title">OLED Beégés Elleni Éjszakai Óra</h3>
+        <p data-i18n="feat6Desc">Tiszta fekete éjszakai óra mód percenkénti pixel-eltolással, ami minimálisra csökkenti az akkumulátor-fogyasztást és a kijelző terhelését.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison Section -->
+  <section id="comparison" class="comparison-section">
+    <div class="section-head">
+      <span class="tag" data-i18n="compareTag">Miért a FreeSnore?</span>
+      <h2 data-i18n="compareTitle">FreeSnore vs. SnoreLab</h2>
+      <p data-i18n="compareSub">A legnépszerűbb horkolásfigyelő funkciói, felhős korlátok és előfizetési csapdák nélkül.</p>
+    </div>
+
+    <div class="comparison-card">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th data-i18n="thFeature">Funkció</th>
+            <th data-i18n="thSnoreLab">SnoreLab</th>
+            <th class="highlight" data-i18n="thFreeSnore">FreeSnore</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-i18n="cmpPrice">Árazás</td>
+            <td data-i18n="cmpPriceSnoreLab">9.99$ / hó (vagy 39.99$ / év)</td>
+            <td class="highlight"><span class="check-icon">✓</span> <span data-i18n="cmpPriceFree">100% Ingyenes (0 Ft)</span></td>
+          </tr>
+          <tr>
+            <td data-i18n="cmpPrivacy">Adatvédelem</td>
+            <td data-i18n="cmpPrivacySnoreLab">Felhőbe tölti a hangfájlokat</td>
+            <td class="highlight"><span class="check-icon">✓</span> <span data-i18n="cmpPrivacyFree">Kizárólag a telefonodon marad</span></td>
+          </tr>
+          <tr>
+            <td data-i18n="cmpClips">Hangrögzítés</td>
+            <td data-i18n="cmpClipsSnoreLab">Csak 20 minta ingyen</td>
+            <td class="highlight"><span class="check-icon">✓</span> <span data-i18n="cmpClipsFree">Korlátlan hangminták</span></td>
+          </tr>
+          <tr>
+            <td data-i18n="cmpPdf">Orvosi PDF Export</td>
+            <td data-i18n="cmpPdfSnoreLab">Fizetős fal mögött</td>
+            <td class="highlight"><span class="check-icon">✓</span> <span data-i18n="cmpPdfFree">Ingyen elérhető előnézettel</span></td>
+          </tr>
+          <tr>
+            <td data-i18n="cmpCode">Nyílt Forráskód</td>
+            <td data-i18n="cmpCodeSnoreLab">Zárt, kereskedelmi kód</td>
+            <td class="highlight"><span class="check-icon">✓</span> <span data-i18n="cmpCodeFree">Teljesen nyílt GitHub repo</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section id="how-it-works" class="steps-section">
+    <div class="section-head">
+      <span class="tag" data-i18n="stepsTag">Egyszerű Használat</span>
+      <h2 data-i18n="stepsTitle">Hogyan működik?</h2>
+      <p data-i18n="stepsSub">Csak 3 lépés az esti indítástól a reggeli részletes kiértékelésig.</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-number">01</div>
+        <h3 data-i18n="step1Title">1. Állítsd be és Indítsd el</h3>
+        <p data-i18n="step1Desc">Válaszd ki az elalvási idődet (pl. 15 perc), jelöld be az aznapi tényezőket, és tedd a telefont az éjjeliszekrényre.</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">02</div>
+        <h3 data-i18n="step2Title">2. Aludj nyugodtan</h3>
+        <p data-i18n="step2Desc">A FreeSnore a háttérben figyeli a légzési hangokat, miközben a képernyőt lezárhatod vagy sötétített óra módba teheted.</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-number">03</div>
+        <h3 data-i18n="step3Title">3. Reggeli Elemzés</h3>
+        <p data-i18n="step3Desc">Ébredés után azonnal megkapod a horkolási pontszámodat, az intenzitási görbét és a megosztható orvosi jelentést.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Box Section -->
+  <section class="cta-section">
+    <div class="cta-box">
+      <h2 data-i18n="ctaTitle">Készen állsz a jobb alvásra?</h2>
+      <p data-i18n="ctaSub">Csatlakozz a nyilvános TestFlight bétához most, és próbáld ki az első éjszakán teljesen ingyen!</p>
+      
+      <div class="cta-buttons">
+        <a href="https://testflight.apple.com" target="_blank" rel="noopener" class="btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 1.01-2.87-1 .04-2.17.67-2.78 1.41-.54.63-.99 1.7-.87 2.76 1.13.09 2.03-.55 2.64-1.3"/>
+          </svg>
+          <span data-i18n="btnTestFlightCta">TestFlight Béta Telepítése</span>
+        </a>
+
+        <a href="https://github.com/limpetdrone/FreeSnore" target="_blank" rel="noopener" class="btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span data-i18n="btnGithub">Forráskód a GitHubon</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-content">
+      <p class="disclaimer-note" data-i18n="footerDisclaimer">
+        Jogi és orvosi tájékoztató: A FreeSnore egy akusztikai alvásfigyelő eszköz, nem minősül orvosi diagnosztikai szoftvernek. Egészségügyi panaszok vagy alvási apnoe gyanúja esetén fordulj szakorvoshoz.
+      </p>
+
+      <div class="footer-links">
+        <a href="https://github.com/limpetdrone/FreeSnore" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://testflight.apple.com" target="_blank" rel="noopener">TestFlight</a>
+        <a href="https://github.com/limpetdrone/FreeSnore/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+      </div>
+
+      <p>© 2026 FreeSnore. <span data-i18n="footerRights">Minden jog fenntartva.</span></p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
