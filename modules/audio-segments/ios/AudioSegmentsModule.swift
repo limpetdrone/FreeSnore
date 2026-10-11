@@ -6,11 +6,11 @@ struct SegmentRecord: Record {
   @Field var end: Double = 0
 }
 
-final class NoAudioTrackException: Exception {
+final class NoAudioTrackException: Exception, @unchecked Sendable {
   override var reason: String { "The file has no audio track" }
 }
 
-final class ExportFailedException: GenericException<String> {
+final class ExportFailedException: GenericException<String>, @unchecked Sendable {
   override var reason: String { "Could not write the audio file: \(param)" }
 }
 

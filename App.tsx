@@ -16,6 +16,7 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { applyRecordingRetention } from './src/services/recordingStorage';
 import { fillMissingEnvironment } from './src/services/environment';
 import { fillMissingHealth } from './src/services/health';
+import { updateWidgets } from './src/widgets/updateWidgets';
 import { updateSession } from './src/services/storage';
 import { SleepSession } from './src/types/session';
 import { getSessions, getSettings } from './src/services/storage';
@@ -34,6 +35,8 @@ export default function App() {
   const loadData = async () => {
     const data = await getSessions();
     setSessions(data);
+    // Home screen widget: the latest night
+    getSettings().then((s) => updateWidgets(data, s.snoreGoal ?? 25));
   };
 
   // Pollen and weather, watch and scale data of recent nights, when turned on in the settings

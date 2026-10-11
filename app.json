@@ -94,6 +94,41 @@
             "minSdkVersion": 26
           }
         }
+      ],
+      [
+        "expo-widgets",
+        {
+          "widgets": [
+            {
+              "name": "LastNightWidget",
+              "displayName": "FreeSnore",
+              "description": "Last night's snore score",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "LastNight",
+              "label": "FreeSnore",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "description": "Last night's snore score",
+              "updatePeriodMillis": 0
+            }
+          ]
+        }
       ]
     ],
     "web": {
