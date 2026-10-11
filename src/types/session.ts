@@ -72,6 +72,7 @@ export interface SleepSession {
   notes?: string;
   environment?: NightEnvironment;
   health?: NightHealth;
+  nudges?: { minute: number; sent: boolean }[]; // Labs: snore nudges (sent: false = control episode)
 }
 
 export interface AppSettings {
@@ -86,6 +87,7 @@ export interface AppSettings {
   deleteAudioAfterDays?: number | null; // Delete recordings after this many days, keeping the statistics (null: never)
   language?: 'hu' | 'en'; // Unset: follow the device locale
   snoreGoal?: number; // A night meets the goal at or below this score (streaks)
-  healthData?: boolean; // Read watch and scale data from Apple Health / Health Connect
+  healthData?: boolean;
+  labsSnoreNudge?: boolean; // Labs: notify (watch tap) when snoring goes on for minutes // Read watch and scale data from Apple Health / Health Connect
   environmentData?: boolean; // Fetch pollen and outdoor humidity for each night (needs location)
 }

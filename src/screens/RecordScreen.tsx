@@ -17,6 +17,7 @@ import * as Brightness from 'expo-brightness';
 import * as Haptics from 'expo-haptics';
 import { sleepMonitor, LiveAudioStatus } from '../services/audioService';
 import { SnoreTimelineChart } from '../components/SnoreTimelineChart';
+import { nudgeDecision, SnoreNudge } from '../services/snoreNudge';
 import { calculateSnoreStats } from '../services/scoreCalculator';
 import { saveSession, getSettings, DEFAULT_SETTINGS } from '../services/storage';
 import { SleepSession, AppSettings, TimelineSample } from '../types/session';
@@ -24,6 +25,7 @@ import { COLORS, SNORE_LEVELS } from '../constants/theme';
 import {
   showTrackingNotification,
   dismissTrackingNotification,
+  showSnoreNudge,
   showSessionSavedNotification,
 } from '../services/notificationService';
 import { watchAlarms } from '../../modules/alarm-watcher';
@@ -98,6 +100,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
   const nightClockModeRef = useRef<boolean>(false);
   const lastStatusRef = useRef<LiveAudioStatus | null>(null);
   const finishingRef = useRef(false);
+  const nudgesRef = useRef<SnoreNudge[]>([]); // Labs snore nudges of the current night
   const stopAlarmWatchRef = useRef<(() => void) | null>(null);
   // Latest finishSession for callbacks registered when tracking started
   const finishSessionRef = useRef<(reason: 'manual' | 'alarm') => Promise<void>>(async () => {});
@@ -232,6 +235,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
 
     // Microphone starts now (iOS policy disallows background start);
     // frame evaluation stays idle during countdown delay.
+    nudgesRef.current = [];
     const started = await sleepMonitor.startMonitoring(
       (status) => {
         lastStatusRef.current = status;
@@ -257,6 +261,15 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
           if (settings.stopOnAlarm !== false) finishSessionRef.current('alarm');
         },
         resumeAfterInterruption: settings.stopOnAlarm === false,
+        // Labs: a nudge (watch tap) when snoring goes on; some episodes stay un-nudged as control
+        onSnoringEpisode: settings.labsSnoreNudge
+          ? (minute) => {
+              const decision = nudgeDecision(nudgesRef.current, minute);
+              if (!decision) return;
+              nudgesRef.current.push(decision);
+              if (decision.sent) showSnoreNudge(t('nudgeTitle'), t('nudgeBody'));
+            }
+          : undefined,
       }
     );
 
@@ -344,6 +357,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
       clips: result.clips,
       ...(result.audioUri ? { audioUri: result.audioUri } : {}),
       factors: selectedFactors,
+      ...(nudgesRef.current.length > 0 ? { nudges: nudgesRef.current } : {}),
     };
 
     let saved = true;

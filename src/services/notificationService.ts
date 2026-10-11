@@ -4,6 +4,8 @@ import { Platform } from 'react-native';
 const NOTIFICATION_ID = 'freesnore-active-tracking';
 const CHANNEL_ID = 'freesnore-tracking';
 const SAVED_NOTIFICATION_ID = 'freesnore-session-saved';
+const NUDGE_CHANNEL_ID = 'freesnore-nudge';
+const NUDGE_NOTIFICATION_ID = 'freesnore-snore-nudge';
 
 // Silent behavior during sleep (do not beep or vibrate when tracking starts)
 Notifications.setNotificationHandler({
@@ -35,6 +37,14 @@ export async function initNotifications(): Promise<boolean> {
         sound: undefined,
         enableLights: false,
         enableVibrate: false,
+      });
+      // Labs snore nudge: a short vibration (forwarded to a paired watch)
+      await Notifications.setNotificationChannelAsync(NUDGE_CHANNEL_ID, {
+        name: 'Horkolás-jelzés (Labs)',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 150, 250],
+        enableVibrate: true,
+        sound: null,
       });
     }
 
@@ -82,6 +92,22 @@ export async function showSessionSavedNotification(title: string, body: string):
     });
   } catch (error) {
     console.warn('Could not display session saved notification:', error);
+  }
+}
+
+/**
+ * Labs: a nudge to turn over. Silent on the phone; with the iPhone locked it is mirrored to a
+ * worn Apple Watch as a wrist tap. Time-sensitive, so the Sleep focus lets it through.
+ */
+export async function showSnoreNudge(title: string, body: string): Promise<void> {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: NUDGE_NOTIFICATION_ID,
+      content: { title, body, sound: false, interruptionLevel: 'timeSensitive' },
+      trigger: Platform.OS === 'android' ? { channelId: NUDGE_CHANNEL_ID } : null,
+    });
+  } catch (error) {
+    console.warn('Could not show the snore nudge:', error);
   }
 }
 

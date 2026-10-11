@@ -14,6 +14,7 @@ import { getSettings, getSessions, saveSettings, DEFAULT_SETTINGS } from '../ser
 import { applyRecordingRetention, recordingUsage, RecordingUsage } from '../services/recordingStorage';
 import { requestEnvironmentPermission } from '../services/environment';
 import { healthSourceName, requestHealthPermission } from '../services/health';
+import { nudgeEffect, NudgeEffect } from '../services/snoreNudge';
 import { AppSettings } from '../types/session';
 import { COLORS } from '../constants/theme';
 import { t, getLanguage, setLanguage, Language } from '../i18n';
@@ -30,12 +31,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [usage, setUsage] = useState<RecordingUsage | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
+  const [nudges, setNudges] = useState<NudgeEffect | null>(null);
 
   const refreshUsage = () => getSessions().then(recordingUsage).then(setUsage);
 
   useEffect(() => {
     getSettings().then(setSettings);
     refreshUsage();
+    getSessions().then((sessions) => setNudges(nudgeEffect(sessions)));
   }, []);
 
   // Applies changed retention settings right away (e.g. "delete after 30 days")
@@ -309,6 +312,38 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
             )}
           </TouchableOpacity>
         )}
+      </View>
+
+      {/* Labs: experimental features, all off by default */}
+      <View style={styles.card}>
+        <View style={styles.cardRow}>
+          <Ionicons name="flask-outline" size={20} color={COLORS.accent} />
+          <Text style={styles.cardTitle}>{t('labsTitle')}</Text>
+        </View>
+        <Text style={styles.cardDesc}>{t('labsDesc')}</Text>
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={styles.switchLabel}>{t('labsNudgeTitle')}</Text>
+            <Text style={styles.switchDesc}>{t('labsNudgeDesc')}</Text>
+            {settings.labsSnoreNudge && nudges && (
+              <Text style={[styles.switchDesc, { marginTop: 6 }]}>
+                {nudges.nudged.total + nudges.control.total >= 4
+                  ? t('labsNudgeEffect', {
+                      nudgedStopped: nudges.nudged.stopped,
+                      nudgedTotal: nudges.nudged.total,
+                      controlStopped: nudges.control.stopped,
+                      controlTotal: nudges.control.total,
+                    })
+                  : t('labsNudgeNoData')}
+              </Text>
+            )}
+          </View>
+          <Switch
+            value={!!settings.labsSnoreNudge}
+            onValueChange={(val) => updateSetting('labsSnoreNudge', val)}
+            trackColor={{ false: COLORS.surfaceHighlight, true: COLORS.primary }}
+          />
+        </View>
       </View>
 
       {/* About & TestFlight Info */}

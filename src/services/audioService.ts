@@ -13,6 +13,7 @@ import { SnoreIntensity, SnoreClip, TimelineSample } from '../types/session';
 import { SnoreEventCandidate, snoreClassifier } from './snoreDetector';
 import { MinuteBucket, PauseInterval, audioFileOffsetSeconds, buildTimeline, emptyBucket } from './timeline';
 import { resolveAppFileUri } from './appFiles';
+import { snoringEpisodeOngoing } from './snoreNudge';
 
 export interface LiveAudioStatus {
   currentDb: number;
@@ -33,6 +34,8 @@ export interface MonitoringOptions {
   // Another app took the microphone (iOS: alarm, call, Siri). `atMs` is when audio last came in.
   onInterrupted?: (atMs: number) => void;
   resumeAfterInterruption?: boolean; // Otherwise the caller is expected to stop the session
+  // Labs: called at the start of each minute while snoring has gone on for a few minutes
+  onSnoringEpisode?: (minute: number) => void;
 }
 
 export interface MonitoringResult {
@@ -98,6 +101,7 @@ export class SleepMonitorService {
   private pausedAt: number | null = null; // The user paused monitoring (e.g. awake at night)
   private pauseEndsAt: number | null = null;
   private userPausedMs: number = 0; // Finished user pauses: not counted as sleep
+  private lastEpisodeCheckMinute: number = -1;
   private monitorStartTime: number = 0; // Timestamp when snore classification begins (after delay)
   private lastEmitTime: number = 0;
   private currentDb: number = 30;
@@ -190,6 +194,7 @@ export class SleepMonitorService {
       this.pausedAt = null;
       this.pauseEndsAt = null;
       this.userPausedMs = 0;
+      this.lastEpisodeCheckMinute = -1;
       this.monitorStartTime = this.recordingStartTime + options.delaySeconds * 1000;
       this.lastEmitTime = 0;
       this.isRunning = true;
@@ -225,7 +230,18 @@ export class SleepMonitorService {
       db = Math.max(30, Math.min(95, Math.round(metering + 95)));
     }
     this.processAudioFrame(db, now);
+    this.checkSnoringEpisode(now);
     this.emitStatus(now);
+  }
+
+  private checkSnoringEpisode(now: number) {
+    if (!this.options.onSnoringEpisode) return;
+    const minute = Math.floor((now - this.monitorStartTime) / 60000);
+    if (minute === this.lastEpisodeCheckMinute) return;
+    this.lastEpisodeCheckMinute = minute;
+    if (snoringEpisodeOngoing((m) => this.minuteBuckets[m]?.snoreEvents ?? 0, minute)) {
+      this.options.onSnoringEpisode(minute);
+    }
   }
 
   private emitStatus(now: number) {
