@@ -129,7 +129,8 @@
             }
           ]
         }
-      ]
+      ],
+      "./plugins/withWorkManagerAlignment"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
