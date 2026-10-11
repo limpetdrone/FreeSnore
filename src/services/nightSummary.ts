@@ -2,6 +2,7 @@ import type { SleepSession, TimelineSample } from '../types/session';
 import { t, tFactor, formatHoursMinutes } from '../i18n';
 import { compareFactors } from './factorStats';
 import { clockAfter, snoringTimeSeconds, timelineStep } from './timeline';
+import { stageShareItems } from './healthStats';
 
 export interface SnoreEpisode {
   startMinute: number; // offsetMinutes of the first snoring minute
@@ -46,6 +47,8 @@ const MIN_QUIET_STRETCH_MINUTES = 60;
 const CONCENTRATED_SHARE = 0.6; // Share of snoring in one third of the night
 const MIN_HISTORY_NIGHTS = 3;
 const MIN_FACTOR_DELTA_PCT = 20;
+// Below this the watch's blood oxygen is worth mentioning (consumer devices, so only a hint)
+const LOW_SPO2 = 90;
 // Snoring pattern: a long episode holding most of the snoring is continuous snoring;
 // little snoring in short episodes only is occasional
 const CONTINUOUS_EPISODE_MINUTES = 30;
@@ -207,6 +210,12 @@ export function summarizeNight(session: SleepSession, history: SleepSession[] = 
     if (pattern === 'continuous') insights.push(t('insightContinuous'));
     else if (pattern === 'intermittent') insights.push(t('insightIntermittent'));
     if (loudShare >= 0.5) insights.push(t('insightLoud'));
+
+    // Measured by the watch: snoring per sleep stage, and low blood oxygen
+    const stageItems = session.health ? stageShareItems(session.health, t) : [];
+    if (stageItems.length >= 2) sentences.push(t('summaryStages', { list: stageItems.join(', ') }));
+    const spo2Min = session.health?.oxygenSaturation?.min;
+    if (spo2Min !== undefined && spo2Min < LOW_SPO2) insights.push(t('summaryLowSpo2', { min: spo2Min }));
     insights.push(t('insightDoctor'));
   }
 

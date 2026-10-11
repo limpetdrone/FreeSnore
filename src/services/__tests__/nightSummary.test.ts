@@ -80,6 +80,22 @@ describe('summarizeNight', () => {
     expect(summary.references).toEqual([2, 3, 4, 5]);
   });
 
+  it('tells the snoring per sleep stage and low blood oxygen from the watch', () => {
+    const summary = summarizeNight(
+      night((m) => (m >= 180 && m < 270 ? 20 : 0), {
+        health: {
+          snoreShareByStage: { deep: 40, light: 20, rem: 5 },
+          oxygenSaturation: { avg: 95, min: 86 },
+          fetchedAt: '2026-10-10T06:00:00.000Z',
+        },
+      })
+    )!;
+    expect(summary.sentences).toContain(
+      "According to your watch's sleep stages, you snored in deep sleep 40% of the time, in light sleep 20% of the time, in REM 5% of the time (share of each stage's minutes)."
+    );
+    expect(summary.insights).toContainEqual(expect.stringMatching(/^Your watch also measured 86% blood oxygen/));
+  });
+
   it('reports snores per hour when the night has snore counts', () => {
     const counted = night((m) => (m >= 180 && m < 270 ? 20 : 0));
     counted.timeline = counted.timeline.map((s) => ({ ...s, snoreCount: s.snoreSeconds ? 12 : 0 }));

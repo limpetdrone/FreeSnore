@@ -23,6 +23,7 @@ import { snoringTimeSeconds } from '../services/timeline';
 import { exportNightRecording, nightRecordingSize } from '../services/recordingExport';
 import { shareBestOf } from '../services/recordingStorage';
 import { EnvironmentInfo } from '../components/EnvironmentInfo';
+import { healthLines } from '../services/healthStats';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
 interface SessionDetailScreenProps {
@@ -282,6 +283,22 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
                 focus={timelineFocus}
               />
             </View>
+
+            {/* Watch and scale data */}
+            {session.health && (
+              <View style={styles.card}>
+                <Text style={styles.sectionHeading}>{t('healthNight')}</Text>
+                {healthLines(session.health, t).length > 0 ? (
+                  healthLines(session.health, t).map((line) => (
+                    <Text key={line} style={styles.summaryText}>
+                      {line}
+                    </Text>
+                  ))
+                ) : (
+                  <Text style={styles.hintText}>{t('healthNoData')}</Text>
+                )}
+              </View>
+            )}
 
             {/* Outdoor conditions */}
             {session.environment && (

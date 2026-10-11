@@ -34,7 +34,14 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MICROPHONE"
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_HEART_RATE_VARIABILITY",
+        "android.permission.health.READ_RESPIRATORY_RATE",
+        "android.permission.health.READ_OXYGEN_SATURATION",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_WEIGHT"
       ],
       "blockedPermissions": [
         "android.permission.ACCESS_FINE_LOCATION"
@@ -66,6 +73,23 @@
           "locationWhenInUsePermission": "A FreeSnore a hozzávetőleges helyed (kb. 10 km) alapján kéri le a környéked pollen- és időjárási adatait. A helyed nem kerül tárolásra.",
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "A FreeSnore az órád és mérlegeid adatait (pulzus, oxigénszint, alvásszakaszok, súly) olvassa ki, hogy összevesse őket a horkolásoddal. Semmit nem ír az Egészség appba.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],

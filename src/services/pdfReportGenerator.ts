@@ -8,6 +8,7 @@ import { summarizePeriod } from './periodSummary';
 import { binTimeline, columnFill, snoringTimeSeconds } from './timeline';
 import { compareFactors } from './factorStats';
 import { environmentLines } from './environmentStats';
+import { healthLines } from './healthStats';
 
 const escapeHtml = (text: string) =>
   text
@@ -211,6 +212,13 @@ export function buildPdfReportHtml(session: SleepSession): string {
   ${
     session.factors && session.factors.length > 0
       ? `<div class="section-title">${escapeHtml(t('habitsAndRemedies'))}</div><div>${factorChips(session.factors)}</div>`
+      : ''
+  }
+
+  ${
+    session.health && healthLines(session.health, t).length > 0
+      ? `<div class="section-title">${escapeHtml(t('healthNight'))}</div>
+  <p>${healthLines(session.health, t).map(escapeHtml).join('<br>')}</p>`
       : ''
   }
 

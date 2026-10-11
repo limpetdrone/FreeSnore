@@ -15,6 +15,7 @@ import { SessionDetailScreen } from './src/screens/SessionDetailScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { applyRecordingRetention } from './src/services/recordingStorage';
 import { fillMissingEnvironment } from './src/services/environment';
+import { fillMissingHealth } from './src/services/health';
 import { updateSession } from './src/services/storage';
 import { SleepSession } from './src/types/session';
 import { getSessions, getSettings } from './src/services/storage';
@@ -35,14 +36,17 @@ export default function App() {
     setSessions(data);
   };
 
-  // Pollen and weather of recent nights, when turned on in the settings
+  // Pollen and weather, watch and scale data of recent nights, when turned on in the settings
   const fetchEnvironment = async () => {
     const settings = await getSettings();
-    if (!settings.environmentData) return;
-    const updated = await fillMissingEnvironment(await getSessions(), updateSession);
+    const updated = [
+      ...(settings.environmentData ? await fillMissingEnvironment(await getSessions(), updateSession) : []),
+      ...(settings.healthData ? await fillMissingHealth(await getSessions(), updateSession) : []),
+    ];
     if (updated.length === 0) return;
     loadData();
-    setSelectedSession((current) => updated.find((s) => s.id === current?.id) ?? current);
+    const latest = await getSessions();
+    setSelectedSession((current) => latest.find((s) => s.id === current?.id && updated.some((u) => u.id === s.id)) ?? current);
   };
 
   useEffect(() => {

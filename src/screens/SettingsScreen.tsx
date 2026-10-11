@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getSettings, getSessions, saveSettings, DEFAULT_SETTINGS } from '../services/storage';
 import { applyRecordingRetention, recordingUsage, RecordingUsage } from '../services/recordingStorage';
 import { requestEnvironmentPermission } from '../services/environment';
+import { healthSourceName, requestHealthPermission } from '../services/health';
 import { AppSettings } from '../types/session';
 import { COLORS } from '../constants/theme';
 import { t, getLanguage, setLanguage, Language } from '../i18n';
@@ -52,6 +53,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
       return;
     }
     updateSetting('environmentData', on);
+  };
+
+  const toggleHealth = async (on: boolean) => {
+    if (on && !(await requestHealthPermission())) {
+      Alert.alert(t('healthNight'), t('healthUnavailable', { source: healthSourceName ?? '' }));
+      return;
+    }
+    updateSetting('healthData', on);
   };
 
   const compactNow = async () => {
@@ -213,6 +222,23 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
           />
         </View>
       </View>
+
+      {/* Apple Health / Health Connect */}
+      {healthSourceName && (
+        <View style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.switchLabel}>{t('healthTitle', { source: healthSourceName })}</Text>
+              <Text style={styles.switchDesc}>{t('healthToggleDesc', { source: healthSourceName })}</Text>
+            </View>
+            <Switch
+              value={!!settings.healthData}
+              onValueChange={toggleHealth}
+              trackColor={{ false: COLORS.surfaceHighlight, true: COLORS.primary }}
+            />
+          </View>
+        </View>
+      )}
 
       {/* Pollen and weather */}
       <View style={styles.card}>

@@ -33,6 +33,23 @@ export interface NightEnvironment {
   pm25?: number;
 }
 
+export type SleepStage = 'awake' | 'light' | 'deep' | 'rem';
+
+/** Data of the night from Apple Health / Health Connect (watch, scale), when turned on */
+export interface NightHealth {
+  heartRate?: { avg: number; min: number }; // bpm during the night
+  restingHeartRate?: number;
+  hrv?: number; // ms (iPhone: SDNN, Android: RMSSD)
+  respiratoryRate?: number; // breaths per minute
+  oxygenSaturation?: { avg: number; min: number }; // %
+  breathingDisturbances?: number; // Apple Watch: per hour
+  sleepApneaEvents?: number; // Apple Watch notifications about this night
+  stageMinutes?: Partial<Record<SleepStage, number>>; // From the watch's sleep tracking
+  snoreShareByStage?: Partial<Record<SleepStage, number>>; // % of each stage's minutes with snoring
+  weightKg?: number; // Latest weight within 30 days before the night
+  fetchedAt: string; // ISO; watches sync late, so a fetch right after the night is repeated once
+}
+
 export interface SleepSession {
   id: string;
   startTime: string; // ISO string
@@ -54,6 +71,7 @@ export interface SleepSession {
   factors: string[]; // i18n keys, e.g. ['factorBackSleep', 'remedyNasalStrips'] (legacy sessions: plain text)
   notes?: string;
   environment?: NightEnvironment;
+  health?: NightHealth;
 }
 
 export interface AppSettings {
@@ -68,5 +86,6 @@ export interface AppSettings {
   deleteAudioAfterDays?: number | null; // Delete recordings after this many days, keeping the statistics (null: never)
   language?: 'hu' | 'en'; // Unset: follow the device locale
   snoreGoal?: number; // A night meets the goal at or below this score (streaks)
+  healthData?: boolean; // Read watch and scale data from Apple Health / Health Connect
   environmentData?: boolean; // Fetch pollen and outdoor humidity for each night (needs location)
 }
