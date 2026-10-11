@@ -23,6 +23,16 @@ export interface TimelineSample {
   audioOffsetSeconds?: number; // Position of the loudest snore of this minute in the night's audio file
 }
 
+/** Outdoor conditions of the night (Open-Meteo), when the user turned the feature on */
+export interface NightEnvironment {
+  pollen: Partial<Record<'alder' | 'birch' | 'grass' | 'mugwort' | 'ragweed', number>>; // Peak grains/m³
+  humidity?: number; // Average outdoor relative humidity, %
+  temperature?: number; // Average outdoor temperature, °C
+  pressure?: number; // Average sea-level air pressure, hPa
+  pm10?: number; // Average particulate matter, µg/m³
+  pm25?: number;
+}
+
 export interface SleepSession {
   id: string;
   startTime: string; // ISO string
@@ -30,7 +40,7 @@ export interface SleepSession {
   delayMinutes: number; // Configured start delay
   totalDurationSeconds: number; // In seconds
   snoreDurationSeconds: number; // Minutes with snoring, in seconds (older sessions: sum of snore sounds; use snoringTimeSeconds())
-  snoreScore: number; // SnoreLab-like composite score (0 - 150+)
+  snoreScore: number; // Composite snore score (0 - 150+)
   quietPercent: number; // Percentage of quiet sleep
   lightPercent: number; // Percentage of light snoring
   loudPercent: number; // Percentage of loud snoring
@@ -38,9 +48,12 @@ export interface SleepSession {
   peakDb: number;
   timeline: TimelineSample[];
   clips: SnoreClip[];
-  audioUri?: string; // Whole-night recording (kept when snoring was detected)
+  audioUri?: string; // Night recording (kept when snoring was detected)
+  audioCompacted?: boolean; // The recording holds only the snoring parts (offsets point into it)
+  audioRemoved?: boolean; // The recording was deleted by the retention setting; statistics remain
   factors: string[]; // i18n keys, e.g. ['factorBackSleep', 'remedyNasalStrips'] (legacy sessions: plain text)
   notes?: string;
+  environment?: NightEnvironment;
 }
 
 export interface AppSettings {
@@ -51,6 +64,9 @@ export interface AppSettings {
   maxClipsPerSession: number;
   stopOnAlarm?: boolean; // End and save the night when the phone's alarm rings
   keepFullRecording?: boolean; // Keep the night's audio even without detected snoring (for testing)
+  keepFullNightDays?: number | null; // Keep the whole night this many days, then only the snoring parts (null: always whole)
+  deleteAudioAfterDays?: number | null; // Delete recordings after this many days, keeping the statistics (null: never)
   language?: 'hu' | 'en'; // Unset: follow the device locale
   snoreGoal?: number; // A night meets the goal at or below this score (streaks)
+  environmentData?: boolean; // Fetch pollen and outdoor humidity for each night (needs location)
 }

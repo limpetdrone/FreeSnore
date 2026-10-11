@@ -58,7 +58,7 @@ export function calculateSnoreStats(
   const snoreRatio = snoreCount / total;
   const snoreDurationSeconds = Math.round(totalDurationSeconds * snoreRatio);
 
-  // SnoreLab inspired Snore Score calculation:
+  // Composite Snore Score calculation:
   // Combines duration of snoring with severity multipliers
   const rawScore =
     lightPercent * 0.4 +

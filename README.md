@@ -1,6 +1,6 @@
 # FreeSnore 🌙
 
-A **FreeSnore** egy nyílt forráskódú, modern horkolásfigyelő és alváselemző mobilalkalmazás iOS (TestFlight) és Android platformokra, a népszerű **SnoreLab** koncepciója alapján.
+A **FreeSnore** egy nyílt forráskódú, modern horkolásfigyelő és alváselemző mobilalkalmazás iOS (TestFlight) és Android platformokra.
 
 ---
 
@@ -17,7 +17,7 @@ A **FreeSnore** egy nyílt forráskódú, modern horkolásfigyelő és alvásele
      - 🟡 **Halk horkolás** (40 - 52 dB)
      - 🟠 **Hangos horkolás** (52 - 68 dB)
      - 🔴 **Erős / Epic horkolás** (> 68 dB)
-   - SnoreLab-szerű összetett **Horkolási Pontszám (Snore Score)** számítás.
+   - Összetett, súlyozott **Horkolási Pontszám (Snore Score)** számítás.
 
 3. **🔊 Horkolások Visszahallgatása**
    - A kirívó horkolási epizódokból hangminták rögzítése.
