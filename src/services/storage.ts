@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxClipsPerSession: 15,
   keepFullRecording: false,
   stopOnAlarm: true,
+  snoreGoal: 25,
 };
 
 export async function getSessions(): Promise<SleepSession[]> {

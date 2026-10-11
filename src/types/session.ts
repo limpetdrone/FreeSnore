@@ -52,4 +52,5 @@ export interface AppSettings {
   stopOnAlarm?: boolean; // End and save the night when the phone's alarm rings
   keepFullRecording?: boolean; // Keep the night's audio even without detected snoring (for testing)
   language?: 'hu' | 'en'; // Unset: follow the device locale
+  snoreGoal?: number; // A night meets the goal at or below this score (streaks)
 }

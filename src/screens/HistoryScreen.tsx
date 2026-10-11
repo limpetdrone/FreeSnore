@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,9 @@ import { MonthlyChart } from '../components/MonthlyChart';
 import { snoringTimeSeconds } from '../services/timeline';
 import { PeriodReportPanel } from '../components/PeriodReportPanel';
 import { PeriodSummaryCard } from '../components/PeriodSummaryCard';
+import { StreakCard } from '../components/StreakCard';
+import { WeekendCard } from '../components/WeekendCard';
+import { getSettings, DEFAULT_SETTINGS } from '../services/storage';
 import { COLORS } from '../constants/theme';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
@@ -27,6 +30,15 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   onSelectSession,
 }) => {
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [snoreGoal, setSnoreGoal] = useState(DEFAULT_SETTINGS.snoreGoal ?? 25);
+  useEffect(() => {
+    // Sessions change after a night or a settings change: re-read the goal then
+    getSettings().then((s) => setSnoreGoal(s.snoreGoal ?? DEFAULT_SETTINGS.snoreGoal ?? 25));
+  }, [sessions]);
+  const lastMonth = useMemo(() => {
+    const since = new Date().getTime() - 30 * 24 * 3600 * 1000;
+    return sessions.filter((s) => new Date(s.startTime).getTime() >= since);
+  }, [sessions]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return COLORS.epic;
@@ -145,6 +157,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
         {viewMode === 'daily' && (
           <View>
+            {sessions.length > 0 && <StreakCard sessions={sessions} goal={snoreGoal} />}
             <View style={styles.listHeaderRow}>
               <Text style={styles.sectionHeader}>{t('recordedNights', { count: sessions.length })}</Text>
               <Text style={styles.hintHeader}>{t('historyTapHint')}</Text>
@@ -178,6 +191,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           <View>
             <MonthlyChart sessions={sessions} />
             <PeriodSummaryCard sessions={sessions} days={30} title={t('monthSummaryTitle')} />
+            <WeekendCard sessions={lastMonth} />
 
             <Text style={[styles.sectionHeader, { marginTop: 16 }]}>
               {t('recordedNights', { count: sessions.length })}

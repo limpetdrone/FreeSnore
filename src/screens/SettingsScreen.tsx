@@ -102,6 +102,28 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
         </View>
       </View>
 
+      {/* Snore score goal (streaks) */}
+      <View style={styles.card}>
+        <View style={styles.cardRow}>
+          <Ionicons name="flag-outline" size={20} color={COLORS.quiet} />
+          <Text style={styles.cardTitle}>{t('snoreGoalTitle')}</Text>
+        </View>
+        <Text style={styles.cardDesc}>{t('snoreGoalDesc')}</Text>
+        <View style={styles.chipsRow}>
+          {[10, 25, 35, 50].map((goal) => (
+            <TouchableOpacity
+              key={goal}
+              style={[styles.chip, (settings.snoreGoal ?? 25) === goal && styles.chipActive]}
+              onPress={() => updateSetting('snoreGoal', goal)}
+            >
+              <Text style={[styles.chipText, (settings.snoreGoal ?? 25) === goal && styles.chipTextActive]}>
+                {t('snoreGoalOption', { goal })}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {/* Sensitivity section */}
       <View style={styles.card}>
         <View style={styles.cardRow}>

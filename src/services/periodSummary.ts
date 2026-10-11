@@ -3,6 +3,7 @@ import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 import { SnorePattern, summarizeNight } from './nightSummary';
 import { snoringTimeSeconds } from './timeline';
 import { compareFactors } from './factorStats';
+import { compareWeekend } from './nightStats';
 
 export interface PeriodSummary {
   sentences: string[];
@@ -98,6 +99,20 @@ export function summarizePeriod(sessions: SleepSession[]): PeriodSummary | null 
   if ((patterns.continuous ?? 0) >= Math.max(1, nights.length / 2)) insights.push(t('insightContinuous'));
   if (totalSnore > 0) insights.push(t('insightDoctor'));
 
+
+  // Weekend nights (Friday, Saturday) against the rest, when both have a few nights
+  const { weekday, weekend } = compareWeekend(nights);
+  if (weekday && weekend && weekday.nights >= 2 && weekend.nights >= 2) {
+    const diff = weekend.avgScore - weekday.avgScore;
+    if (Math.abs(diff) > Math.max(5, weekday.avgScore * 0.15)) {
+      sentences.push(
+        t(diff > 0 ? 'periodWeekendWorse' : 'periodWeekendBetter', {
+          weekend: weekend.avgScore,
+          weekday: weekday.avgScore,
+        })
+      );
+    }
+  }
 
   // The habit or remedy that changed the score the most in this period
   const factor = compareFactors(nights, 2)
