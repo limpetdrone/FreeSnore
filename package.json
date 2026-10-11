@@ -24,6 +24,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-widgets": "~57.0.23",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-android-widget": "^0.22.1",
     "react-native-health-connect": "^4.1.3",
