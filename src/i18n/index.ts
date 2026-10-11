@@ -124,13 +124,13 @@ export const translations = {
     summaryPatternSporadic: 'Mintázat: alkalmi horkolás – csak néhány rövid, elszórt szakasz.',
     insightTitle: 'Mit jelenthet?',
     insightRate:
-      'A horkolási index klinikai vizsgálatokban horkolók között is széles tartományban mozog, és nincs elfogadott határértéke, ezért önmagában nem diagnosztikus [8].',
+      'A horkolási index klinikai vizsgálatokban a horkolók között is széles tartományban mozog [8], ezért önmagában nem diagnosztikus.',
     insightEarly:
       'Az éjszaka első harmadában a legtöbb a mélyalvás (N3) [5]. Alvásvizsgálatok szerint a horkolás a mélyebb, N2–N3 szakaszokban a leggyakoribb és a leghosszabb [2, 3], így a főleg korai horkolás illik a szokásos alvásszerkezethez.',
     insightMiddle:
       'Az éjszaka közepén a könnyebb, N2 alvás a jellemző; felnőtteknél a horkolási idő nagyjából kétharmada erre a szakaszra esik [2].',
     insightLate:
-      'Az éjszaka utolsó harmadában a REM-alvás a legjellemzőbb [5]. REM alatt általában kevesebb a horkolás [2], így a főleg hajnali horkolás mögött inkább a testhelyzet (pl. hanyatt fekvés) állhat; ritkábban REM-hez kötött légzészavar is okozhatja [6].',
+      'Az éjszaka utolsó harmadában a REM-alvás a legjellemzőbb [5]. REM alatt általában kevesebb a horkolás [2]; ha mégis főleg hajnalban horkolsz, érdemes figyelni, mert egyeseknél a légúti elzáródás kifejezetten REM-alvásban jelentkezik [6].',
     insightAlcohol:
       'Erre az éjszakára alkoholt jelöltél. Az alkohol ellazítja a garat izmait: egy alvásvizsgálatban 0,5‰ véralkoholszintnél 1,6-szorosára, 0,8‰-nél 4,2-szeresére nőtt a horkolási index [4]. A hatás addig tart, amíg az alkohol le nem bomlik.',
     insightContinuous:
@@ -138,7 +138,7 @@ export const translations = {
     insightIntermittent:
       'A ki-be kapcsoló horkolás gyakran testhelyzet-váltással függ össze: hanyatt fekve a nyelv és a lágy szájpad hátrébb kerül, oldalt fekve a horkolás sokszor megszűnik. Jelöld be esténként a testhelyzetet, és az összevetés megmutatja, nálad számít-e.',
     insightLoud:
-      'A horkolás hangereje a vizsgálatok szerint inkább a légzészavar súlyosságával függ össze, mint az alvásszakasszal [3]. A telefon mérése nem kalibrált, ezért a dB-értékek csak egymáshoz viszonyítva beszédesek.',
+      'Egy alvásvizsgálat szerint a horkolás hangerejét a légzészavar súlyossága, az alvásszakasz és a testhelyzet egyaránt befolyásolja [3]. A telefon mérése nem kalibrált, ezért a dB-értékek csak egymáshoz viszonyítva beszédesek.',
     insightDoctor:
       'Ha a horkoláshoz fulladásos felriadás, mások által észlelt légzéskimaradás vagy nappali álmosság társul, érdemes alvásvizsgálatot kérni – ezek erősebb jelei az alvási apnoénak, mint maga a horkolás.',
     referencesTitle: 'Források',
@@ -389,13 +389,13 @@ export const translations = {
     summaryPatternSporadic: 'Pattern: occasional snoring – only a few short, scattered episodes.',
     insightTitle: 'What it may mean',
     insightRate:
-      'In clinical studies the snore index varies widely even among snorers and has no accepted cut-off, so on its own it is not diagnostic [8].',
+      'In clinical studies the snore index varies widely even among snorers [8], so on its own it is not diagnostic.',
     insightEarly:
       'The first third of the night holds most of the deep (N3) sleep [5]. Sleep studies find snoring most frequent and longest in the deeper N2–N3 stages [2, 3], so snoring mainly early in the night fits the usual sleep structure.',
     insightMiddle:
       'The middle of the night is mostly lighter N2 sleep; in adults about two thirds of snoring time falls into this stage [2].',
     insightLate:
-      'The last third of the night is richest in REM sleep [5]. Snoring is usually less common in REM [2], so snoring mainly in the early morning may rather come from body position (e.g. lying on the back); less often it is caused by REM-related breathing disorders [6].',
+      'The last third of the night is richest in REM sleep [5]. Snoring is usually less common in REM [2]; if you snore mainly in the early morning it is worth watching, because in some people airway obstruction occurs specifically in REM sleep [6].',
     insightAlcohol:
       'You marked alcohol for this night. Alcohol relaxes the throat muscles: in a sleep study the snore index rose 1.6-fold at 0.5‰ and 4.2-fold at 0.8‰ blood alcohol [4]. The effect lasts until the alcohol is broken down.',
     insightContinuous:
@@ -403,7 +403,7 @@ export const translations = {
     insightIntermittent:
       'Snoring that comes and goes is often linked to changes in body position: on the back the tongue and soft palate fall backwards, on the side snoring often stops. Mark your sleeping position in the evening and the comparison will show whether it matters for you.',
     insightLoud:
-      'Studies link snoring loudness more to the severity of breathing disorders than to the sleep stage [3]. Phone measurements are not calibrated, so dB values are meaningful only relative to each other.',
+      'A sleep study found that snoring loudness depends on the severity of breathing disorders, the sleep stage and body position alike [3]. Phone measurements are not calibrated, so dB values are meaningful only relative to each other.',
     insightDoctor:
       'If snoring comes with waking up gasping or choking, breathing pauses noticed by others, or daytime sleepiness, ask for a sleep study – these are stronger signs of sleep apnea than snoring itself.',
     referencesTitle: 'Sources',
