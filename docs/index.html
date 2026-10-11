@@ -30,6 +30,7 @@
       </a>
 
       <nav class="nav-links">
+        <a href="#screens" data-i18n="navScreenshots">Screenshots</a>
         <a href="#features" data-i18n="navFeatures">Features</a>
         <a href="#how-it-works" data-i18n="navHowItWorks">How It Works</a>
         
@@ -137,23 +138,120 @@
     </div>
   </section>
 
-  <!-- Key Features Grid -->
+  <!-- Interactive Screenshots Showcase -->
+  <section id="screens" class="showcase-section">
+    <div class="section-head">
+      <span class="tag" data-i18n="showcaseTag">App Tour & Screenshots</span>
+      <h2 data-i18n="showcaseTitle">Explore FreeSnore in Action</h2>
+      <p data-i18n="showcaseSub">Every tool you need to evaluate, correlate, and improve your sleep acoustics — designed for clarity without late-night visual clutter.</p>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="showcase-tabs">
+      <button class="showcase-tab active" data-tab="0">
+        <span>🌙</span>
+        <span data-i18n="tabNightDetail">Night Analysis</span>
+      </button>
+      <button class="showcase-tab" data-tab="1">
+        <span>🌿</span>
+        <span data-i18n="tabEnvironment">Pollen & Air Quality</span>
+      </button>
+      <button class="showcase-tab" data-tab="2">
+        <span>📈</span>
+        <span data-i18n="tabTrends">Streaks & Trends</span>
+      </button>
+      <button class="showcase-tab" data-tab="3">
+        <span>📄</span>
+        <span data-i18n="tabPdfPreview">Clinical PDF Report</span>
+      </button>
+    </div>
+
+    <!-- Interactive Showcase Stage -->
+    <div class="showcase-stage">
+      <div class="showcase-phone-wrapper">
+        <div class="showcase-phone-glow"></div>
+        <div class="showcase-phone-frame">
+          <img id="showcaseMainImg" class="showcase-img" src="assets/screen_night_detail.jpg" alt="FreeSnore Night Evaluation Screen">
+        </div>
+      </div>
+
+      <div class="showcase-info">
+        <span id="showcaseTag" class="showcase-info-tag" data-i18n="tourTag0">Acoustic Evaluation</span>
+        <h3 id="showcaseHeading" data-i18n="tourHeading0">Overnight Acoustic Breakdown & Snore Score</h3>
+        <p id="showcaseDesc" data-i18n="tourDesc0">Review your composite Snore Score, loudness distribution (Quiet, Light, Loud, Epic), and listen to recorded snoring episodes with interactive waveforms.</p>
+        
+        <ul id="showcaseList" class="showcase-feature-list">
+          <li class="showcase-feature-item">
+            <span class="showcase-feature-icon">✓</span>
+            <span data-i18n="tourItem01">Weighted composite Snore Score (0 – 160) tracking severity over time</span>
+          </li>
+          <li class="showcase-feature-item">
+            <span class="showcase-feature-icon">✓</span>
+            <span data-i18n="tourItem02">Minute-by-minute interactive sound timeline with scrubable playback</span>
+          </li>
+          <li class="showcase-feature-item">
+            <span class="showcase-feature-icon">✓</span>
+            <span data-i18n="tourItem03">Automatic audio snippet recording of significant sound spikes</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 4-Card Quick Preview Grid -->
+    <div class="showcase-thumbs-grid">
+      <div class="showcase-thumb-card active" data-tab="0">
+        <img src="assets/screen_night_detail.jpg" alt="Night Analysis Thumbnail">
+        <div class="showcase-thumb-text">
+          <span class="showcase-thumb-title" data-i18n="thumbTitle0">Night Analysis</span>
+          <span class="showcase-thumb-desc" data-i18n="thumbDesc0">Scores, timelines & audio</span>
+        </div>
+      </div>
+
+      <div class="showcase-thumb-card" data-tab="1">
+        <img src="assets/screen_environment.jpg" alt="Pollen Analysis Thumbnail">
+        <div class="showcase-thumb-text">
+          <span class="showcase-thumb-title" data-i18n="thumbTitle1">Air & Pollen</span>
+          <span class="showcase-thumb-desc" data-i18n="thumbDesc1">Open-Meteo weather stats</span>
+        </div>
+      </div>
+
+      <div class="showcase-thumb-card" data-tab="2">
+        <img src="assets/screen_trends_streaks.jpg" alt="Trends & Streaks Thumbnail">
+        <div class="showcase-thumb-text">
+          <span class="showcase-thumb-title" data-i18n="thumbTitle2">Goal Streaks</span>
+          <span class="showcase-thumb-desc" data-i18n="thumbDesc2">Weekday vs. Weekend</span>
+        </div>
+      </div>
+
+      <div class="showcase-thumb-card" data-tab="3">
+        <img src="assets/screen_pdf_preview.jpg" alt="PDF Report Thumbnail">
+        <div class="showcase-thumb-text">
+          <span class="showcase-thumb-title" data-i18n="thumbTitle3">Doctor PDF</span>
+          <span class="showcase-thumb-desc" data-i18n="thumbDesc3">Interactive report preview</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features Grid (Expanded to 8 Rich Cards) -->
   <section id="features" class="features-section">
     <div class="section-head">
-      <span class="tag" data-i18n="featuresTag">Modern Acoustic Tech</span>
-      <h2 data-i18n="featuresTitle">Everything You Need for Quiet, Restful Nights</h2>
-      <p data-i18n="featuresSub">Tracks your sleep acoustics with clinical precision from bedtime to morning, without draining your battery.</p>
+      <span class="tag" data-i18n="featuresTag">Comprehensive Feature Suite</span>
+      <h2 data-i18n="featuresTitle">Everything Built for Quiet, Restful Nights</h2>
+      <p data-i18n="featuresSub">From cutting-edge acoustic detection to outdoor pollen tracking, storage optimization, and clinical PDF exports.</p>
     </div>
 
     <div class="features-grid">
+      <!-- Feature 1 -->
       <div class="feature-card">
         <div class="feature-icon-box">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
         </div>
         <h3 data-i18n="feat1Title">Acoustic Snore Detection</h3>
-        <p data-i18n="feat1Desc">Distinguishes actual snoring from bed tossing and room ambient noise using duration gating and respiratory periodicity.</p>
+        <p data-i18n="feat1Desc">Filters ambient bedroom rustles and movement using respiratory periodicity and duration gating to isolate authentic snoring episodes.</p>
       </div>
 
+      <!-- Feature 2 -->
       <div class="feature-card">
         <div class="feature-icon-box">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -162,36 +260,58 @@
         <p data-i18n="feat2Desc">Microphone activates quietly upfront adhering to iOS background rules, while acoustic evaluation begins once you're asleep.</p>
       </div>
 
+      <!-- Feature 3 -->
       <div class="feature-card">
         <div class="feature-icon-box">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
         </div>
         <h3 data-i18n="feat3Title">Overnight Sound Timeline</h3>
-        <p data-i18n="feat3Desc">Inspect loudness spikes and snoring duration minute-by-minute across the entire night with interactive playback.</p>
+        <p data-i18n="feat3Desc">Inspect loudness spikes and snoring duration minute-by-minute across the entire night with interactive playback and scrub bar.</p>
       </div>
 
+      <!-- Feature 4 -->
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <h3 data-i18n="feat4Title">Pollen & Outdoor Air Quality</h3>
+        <p data-i18n="feat4Desc">Correlates night-time breathing with Open-Meteo & CAMS outdoor data: tracks birch, grass, and ragweed pollen, humidity, PM2.5, and air pressure.</p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <h3 data-i18n="feat5Title">Goal Streaks & Lifestyle Trends</h3>
+        <p data-i18n="feat5Desc">Set custom quiet goals and build streaks. Analyze weekday vs. weekend patterns to see how late nights or alcohol impact your rest.</p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <h3 data-i18n="feat6Title">Native Audio Compaction</h3>
+        <p data-i18n="feat6Desc">Keeps only the snoring parts of older nights (80MB trimmed to 5-15MB) via lossless native audio trimming, keeping all your statistics intact.</p>
+      </div>
+
+      <!-- Feature 7 -->
       <div class="feature-card">
         <div class="feature-icon-box">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         </div>
-        <h3 data-i18n="feat4Title">Factors & Remedies</h3>
-        <p data-i18n="feat4Desc">Correlate whether sleeping on your back or alcohol worsens snoring, and measure how much nasal strips or side sleeping relieves it.</p>
+        <h3 data-i18n="feat7Title">Clinical Doctor PDF Report</h3>
+        <p data-i18n="feat7Desc">Generate clean clinical PDF reports for doctor consultations, with an in-app interactive preview before sending or printing.</p>
       </div>
 
-      <div class="feature-card">
-        <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><circle cx="10" cy="13" r="2"/><line x1="14" y1="17" x2="18" y2="17"/></svg>
-        </div>
-        <h3 data-i18n="feat5Title">Medical PDF Report Preview</h3>
-        <p data-i18n="feat5Desc">Generate clean clinical PDF reports for doctor consultations, with an in-app interactive preview before sending.</p>
-      </div>
-
+      <!-- Feature 8 -->
       <div class="feature-card">
         <div class="feature-icon-box">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </div>
-        <h3 data-i18n="feat6Title">OLED Anti-Burn Night Clock</h3>
-        <p data-i18n="feat6Desc">Pure black dimmed clock mode with minute-by-minute pixel shift to protect your OLED screen and conserve battery.</p>
+        <h3 data-i18n="feat8Title">OLED Anti-Burn Night Clock & Alarm Sync</h3>
+        <p data-i18n="feat8Desc">Pure black dimmed clock mode with minute-by-minute pixel shift to protect your OLED screen, plus automatic session finalization when your morning alarm rings.</p>
       </div>
     </div>
   </section>
