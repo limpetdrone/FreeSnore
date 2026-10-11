@@ -24,26 +24,26 @@ const showcaseData = {
     }
   },
   1: {
-    img: "assets/screen_environment.jpg",
-    alt: "FreeSnore Pollen & Weather Tracking Screen",
+    img: "assets/screen_record.jpg",
+    alt: "FreeSnore Smart Tracking & Remedies Screen",
     en: {
-      tag: "Environmental Correlation",
-      heading: "Outdoor Pollen, Humidity & Air Quality",
-      desc: "Correlates your sleep quality with local Open-Meteo and Copernicus air data. Understand how environmental allergies impact your nighttime breathing.",
+      tag: "Smart Sleep Session",
+      heading: "Fall-Asleep Delay & Lifestyle Tracking",
+      desc: "Tailor your tracking session before you sleep. Set an ambient delay timer, toggle active remedies and lifestyle factors, and calibrate your microphone.",
       items: [
-        "Pollen tracking for Birch, Grass, Mugwort, and Ragweed (grains/m³)",
-        "Ambient outdoor humidity, air pressure, and PM2.5 / PM10 particulate levels",
-        "Automatic correlation insights linking high pollen days with nasal resistance"
+        "Adjustable fall-asleep delay countdown (0 to 60 mins) to prevent false positives",
+        "One-tap remedy and habit tagging (side sleeping, nasal strips, caffeine, alcohol)",
+        "Real-time ambient noise sensitivity calibration and microphone check"
       ]
     },
     hu: {
-      tag: "Környezeti Összefüggések",
-      heading: "Kültéri Pollen, Páratartalom & Levegőminőség",
-      desc: "Összekapcsolja az alvásminőséget az Open-Meteo és a Copernicus légköri adataival. Tudd meg, mikor nehezíti meg a pollen az éjszakai légzésedet.",
+      tag: "Intelligens Rögzítés",
+      heading: "Elalvási Késleltetés & Életmódbeli Tényezők",
+      desc: "Szabd testre az alvási munkamenetet elalvás előtt! Állíts be késleltetést, jelöld be a használt gyógymódokat és tényezőket, és teszteld a mikrofont.",
       items: [
-        "Nyír, fű, fekete üröm és parlagfű pollenterhelés pontos mérése (szemcse/m³)",
-        "Kültéri relatív páratartalom, légnyomás és PM2.5 / PM10 szállópor adatok",
-        "Automatikus egészségügyi összefüggések a magas pollenszint és a horkolás között"
+        "Beállítható elalvási késleltetés (0-tól 60 percig) a téves mérések elkerülésére",
+        "Egyérintéses gyógymód- és szokásjelölés (oldalfekvés, orrtapasz, kávé, alkohol)",
+        "Valós idejű szobazaj-érzékenységi kalibráció és mikrofonteszt"
       ]
     }
   },
@@ -52,22 +52,22 @@ const showcaseData = {
     alt: "FreeSnore Trends and Streaks Screen",
     en: {
       tag: "Habits & Trends",
-      heading: "Quiet Goal Streaks & Lifestyle Comparisons",
-      desc: "Build consistency with custom quiet sleep goals and visualize how daily habits impact your rest over days, weeks, and months.",
+      heading: "Quiet Goal Streaks & Long-Term Trends",
+      desc: "Build consistency with custom quiet sleep goals and visualize how daily habits impact your rest across daily, weekly, and monthly views.",
       items: [
-        "Conscious quiet goal streak tracker with celebratory milestones",
+        "Conscious quiet goal streak tracker with consecutive nights counter",
         "Weekday vs. Weekend comparison revealing late-night & social impact",
-        "Remedy efficacy tracking: measure the exact relief from side sleeping or nasal strips"
+        "Remedy efficacy analysis: measure exactly how much side sleeping or nasal strips help"
       ]
     },
     hu: {
       tag: "Szokások & Trendek",
-      heading: "Csendes Cél-Sorozatok & Hétköznap vs. Hétvége",
-      desc: "Tűzz ki egyéni csendes határértéket, építs sorozatokat, és lásd tisztán, hogyan változik az alvásod a hétköznapok és a hétvégék során.",
+      heading: "Csendes Cél-Sorozatok & Hosszú Távú Trendek",
+      desc: "Tűzz ki egyéni csendes határértéket, építs sorozatokat, és lásd tisztán a napi, heti és havi bontást, valamint a szokások hatásait.",
       items: [
-        "Motiváló cél-sorozat számláló az egészséges és csendes éjszakákért",
+        "Motiváló cél-sorozat számláló az egymást követő csendes éjszakákért",
         "Hétköznap vs. Hétvége összehasonlítás (késői fekvés, alkohol hatása)",
-        "Gyógymódok hatásvizsgálata: mérd meg az oldalfekvés vagy az orrtapasz valódi hatását"
+        "Gyógymódok hatásvizsgálata: lásd feketén-fehéren az oldalfekvés vagy az orrtapasz hatékonyságát"
       ]
     }
   },
@@ -77,11 +77,11 @@ const showcaseData = {
     en: {
       tag: "Physician Consultation",
       heading: "Clinical Medical PDF Report with In-App Preview",
-      desc: "Export professional medical-grade sleep summaries ready for your ENT or sleep specialist, with full interactive preview before sharing.",
+      desc: "Export professional medical-grade sleep summaries ready for your ENT specialist or sleep clinic, with full interactive preview before sharing.",
       items: [
         "Hour-by-hour acoustic spike timeline and decibel severity breakdown",
         "Applied remedies, factors, and local environmental weather summary",
-        "Exportable as standard high-resolution PDF for printing or medical consultation"
+        "Exportable as standard high-resolution PDF for printing, emailing, or clinical consultation"
       ]
     },
     hu: {
@@ -121,13 +121,13 @@ const i18n = {
     showcaseTitle: "Ismerd meg a FreeSnore felületét",
     showcaseSub: "Minden eszköz a horkolásod akusztikai megértéséhez és csökkentéséhez — tiszta, sötétített felülettel a zavartalan pihenésért.",
     tabNightDetail: "Éjszakai Elemzés",
-    tabEnvironment: "Pollen & Környezet",
+    tabTracking: "Intelligens Rögzítés",
     tabTrends: "Trendek & Célok",
     tabPdfPreview: "Orvosi PDF Jelentés",
     thumbTitle0: "Éjszakai Elemzés",
     thumbDesc0: "Pontszám, görbe & hangok",
-    thumbTitle1: "Pollen & Időjárás",
-    thumbDesc1: "Open-Meteo környezeti adatok",
+    thumbTitle1: "Intelligens Rögzítés",
+    thumbDesc1: "Időzítő & tényezők",
     thumbTitle2: "Cél-sorozatok",
     thumbDesc2: "Hétköznap vs. Hétvége",
     thumbTitle3: "Orvosi PDF",
@@ -141,16 +141,20 @@ const i18n = {
     feat2Desc: "A mikrofon csendben, az iOS háttérszabályai szerint aktiválódik, miközben az akusztikai kiértékelés csak az elalvás után indul el.",
     feat3Title: "Éjszakai Hang-Idővonal",
     feat3Desc: "Percről percre visszanézheted a hangerőcsúcsokat és a horkolási szakaszokat, interaktív visszahallgatási lehetőséggel.",
-    feat4Title: "Pollen & Környezeti Levegőminőség",
-    feat4Desc: "Összefüggés-vizsgálat az Open-Meteo és Copernicus adatokkal: nyír, fű, parlagfű pollen, páratartalom és szállópor (PM2.5) hatása.",
-    feat5Title: "Cél-sorozatok & Életmód Trendek",
-    feat5Desc: "Tűzz ki egyéni csendes célokat és építs sorozatokat! Vizsgáld a hétköznap és hétvége közötti különbséget (késői fekvés, alkohol).",
-    feat6Title: "Natív Hangtömörítés",
-    feat6Desc: "A régebbi éjszakákból csak a horkolásos szakaszokat tartja meg veszteségmentes natív vágással (~80 MB-ból 5-15 MB), így kíméli a tárhelyet.",
-    feat7Title: "Orvosi PDF Jelentés Előnézettel",
-    feat7Desc: "Klinikai szintű alvásjelentést exportálhatsz és oszthatsz meg a szakorvosoddal, amit a küldés előtt teljes egészében áttekinthetsz.",
-    feat8Title: "OLED Éjszakai Óra & Ébresztőóra Szinkron",
-    feat8Desc: "Tiszta fekete éjszakai óra mód percenkénti pixel-eltolással a beégés ellen, valamint a reggeli ébresztő megszólalásakor automatikus leállítás.",
+    feat4Title: "Főképernyős Widgetek",
+    feat4Desc: "Egyetlen pillantással láthatod az utolsó éjszaka pontszámát, a horkolási időt és az aktív cél-sorozatodat natív iOS SwiftUI és Android widgetekkel.",
+    feat5Title: "Apple Health & Health Connect",
+    feat5Desc: "Kapcsold össze a horkolást a pulzussal, véroxigén-szinttel (SpO2), HRV-vel, légzésszámmal és alvási fázisokkal manuális naplózás nélkül.",
+    feat6Title: "Pollen & Környezeti Levegőminőség",
+    feat6Desc: "Összefüggés-vizsgálat az Open-Meteo és Copernicus adatokkal: nyír, fű, parlagfű pollen, páratartalom és szállópor (PM2.5) hatása.",
+    feat7Title: "Cél-sorozatok & Életmód Trendek",
+    feat7Desc: "Tűzz ki egyéni csendes célokat és építs sorozatokat! Vizsgáld a hétköznap és hétvége közötti különbséget (késői fekvés, alkohol).",
+    feat8Title: "Natív Hangtömörítés",
+    feat8Desc: "A régebbi éjszakákból csak a horkolásos szakaszokat tartja meg veszteségmentes natív vágással (~80 MB-ból 5-15 MB), így kíméli a tárhelyet.",
+    feat9Title: "Orvosi PDF Jelentés Előnézettel",
+    feat9Desc: "Klinikai szintű alvásjelentést exportálhatsz és oszthatsz meg a szakorvosoddal, amit a küldés előtt teljes egészében áttekinthetsz.",
+    feat10Title: "OLED Éjszakai Óra & Ébresztőóra Szinkron",
+    feat10Desc: "Tiszta fekete éjszakai óra mód percenkénti pixel-eltolással a beégés ellen, valamint a reggeli ébresztő megszólalásakor automatikus leállítás.",
     stepsTag: "Egyszerű Használat",
     stepsTitle: "Hogyan működik?",
     stepsSub: "Csak 3 lépés az esti indítástól a reggeli részletes kiértékelésig.",
@@ -189,13 +193,13 @@ const i18n = {
     showcaseTitle: "Explore FreeSnore in Action",
     showcaseSub: "Every tool you need to evaluate, correlate, and improve your sleep acoustics — designed for clarity without late-night visual clutter.",
     tabNightDetail: "Night Analysis",
-    tabEnvironment: "Pollen & Air Quality",
+    tabTracking: "Smart Tracking",
     tabTrends: "Streaks & Trends",
     tabPdfPreview: "Clinical PDF Report",
     thumbTitle0: "Night Analysis",
-    thumbDesc0: "Scores, timelines & audio",
-    thumbTitle1: "Air & Pollen",
-    thumbDesc1: "Open-Meteo weather stats",
+    thumbDesc0: "Scores, gauge & brief",
+    thumbTitle1: "Smart Tracking",
+    thumbDesc1: "Delay timer & remedies",
     thumbTitle2: "Goal Streaks",
     thumbDesc2: "Weekday vs. Weekend",
     thumbTitle3: "Doctor PDF",
@@ -209,16 +213,20 @@ const i18n = {
     feat2Desc: "Microphone activates quietly upfront adhering to iOS background rules, while acoustic evaluation begins once you're asleep.",
     feat3Title: "Overnight Sound Timeline",
     feat3Desc: "Inspect loudness spikes and snoring duration minute-by-minute across the entire night with interactive playback and scrub bar.",
-    feat4Title: "Pollen & Outdoor Air Quality",
-    feat4Desc: "Correlates night-time breathing with Open-Meteo & CAMS outdoor data: tracks birch, grass, and ragweed pollen, humidity, PM2.5, and air pressure.",
-    feat5Title: "Goal Streaks & Lifestyle Trends",
-    feat5Desc: "Set custom quiet goals and build streaks. Analyze weekday vs. weekend patterns to see how late nights or alcohol impact your rest.",
-    feat6Title: "Native Audio Compaction",
-    feat6Desc: "Keeps only the snoring parts of older nights (80MB trimmed to 5-15MB) via lossless native audio trimming, keeping all your statistics intact.",
-    feat7Title: "Clinical Doctor PDF Report",
-    feat7Desc: "Generate clean clinical PDF reports for doctor consultations, with an in-app interactive preview before sending or printing.",
-    feat8Title: "OLED Anti-Burn Night Clock & Alarm Sync",
-    feat8Desc: "Pure black dimmed clock mode with minute-by-minute pixel shift to protect your OLED screen, plus automatic session finalization when your morning alarm rings.",
+    feat4Title: "Home Screen Widgets",
+    feat4Desc: "Glance at last night's snore score, sound duration, and your active streak right from your home screen with native iOS SwiftUI & Android AppWidget extensions.",
+    feat5Title: "Apple Health & Health Connect",
+    feat5Desc: "Correlate your snoring intensity with pulse rate, blood oxygen (SpO2), heart rate variability (HRV), respiration rate, and sleep stages without manual logging.",
+    feat6Title: "Pollen & Outdoor Air Quality",
+    feat6Desc: "Correlates night-time breathing with Open-Meteo & CAMS outdoor data: tracks birch, grass, and ragweed pollen, humidity, PM2.5, and air pressure.",
+    feat7Title: "Goal Streaks & Lifestyle Trends",
+    feat7Desc: "Set custom quiet goals and build streaks. Analyze weekday vs. weekend patterns to see how late nights or alcohol impact your rest.",
+    feat8Title: "Native Audio Compaction",
+    feat8Desc: "Keeps only the snoring parts of older nights (80MB trimmed to 5-15MB) via lossless native audio trimming, keeping all your statistics intact.",
+    feat9Title: "Clinical Doctor PDF Report",
+    feat9Desc: "Generate clean clinical PDF reports for doctor consultations, with an in-app interactive preview before sending or printing.",
+    feat10Title: "OLED Anti-Burn Night Clock & Alarm Sync",
+    feat10Desc: "Pure black dimmed clock mode with minute-by-minute pixel shift to protect your OLED screen, plus automatic session finalization when your morning alarm rings.",
     stepsTag: "Effortless Setup",
     stepsTitle: "How It Works",
     stepsSub: "Only 3 steps from setting your phone down to reviewing your morning report.",

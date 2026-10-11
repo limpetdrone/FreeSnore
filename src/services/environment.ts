@@ -1,6 +1,13 @@
-import * as Location from 'expo-location';
 import type { NightEnvironment, SleepSession } from '../types/session';
 import { POLLEN_TYPES, PollenType } from './environmentStats';
+
+let Location: typeof import('expo-location') | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Location = require('expo-location');
+} catch {
+  Location = null;
+}
 
 /*
  * Outdoor conditions of a night from Open-Meteo (pollen and particulate matter: CAMS European
@@ -56,6 +63,7 @@ export function summarizeEnvironment(
 }
 
 async function approximateLocation(): Promise<{ latitude: number; longitude: number } | null> {
+  if (!Location) return null;
   const permission = await Location.getForegroundPermissionsAsync();
   if (!permission.granted) return null;
   const last = await Location.getLastKnownPositionAsync({ maxAge: LOCATION_MAX_AGE_MS });
@@ -65,6 +73,7 @@ async function approximateLocation(): Promise<{ latitude: number; longitude: num
 
 /** Asks for the location permission (when the user turns the feature on). */
 export async function requestEnvironmentPermission(): Promise<boolean> {
+  if (!Location) return false;
   const { granted } = await Location.requestForegroundPermissionsAsync();
   return granted;
 }

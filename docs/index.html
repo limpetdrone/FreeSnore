@@ -153,8 +153,8 @@
         <span data-i18n="tabNightDetail">Night Analysis</span>
       </button>
       <button class="showcase-tab" data-tab="1">
-        <span>🌿</span>
-        <span data-i18n="tabEnvironment">Pollen & Air Quality</span>
+        <span>🎙️</span>
+        <span data-i18n="tabTracking">Smart Tracking</span>
       </button>
       <button class="showcase-tab" data-tab="2">
         <span>📈</span>
@@ -203,15 +203,15 @@
         <img src="assets/screen_night_detail.jpg" alt="Night Analysis Thumbnail">
         <div class="showcase-thumb-text">
           <span class="showcase-thumb-title" data-i18n="thumbTitle0">Night Analysis</span>
-          <span class="showcase-thumb-desc" data-i18n="thumbDesc0">Scores, timelines & audio</span>
+          <span class="showcase-thumb-desc" data-i18n="thumbDesc0">Scores, gauge & brief</span>
         </div>
       </div>
 
       <div class="showcase-thumb-card" data-tab="1">
-        <img src="assets/screen_environment.jpg" alt="Pollen Analysis Thumbnail">
+        <img src="assets/screen_record.jpg" alt="Smart Tracking Thumbnail">
         <div class="showcase-thumb-text">
-          <span class="showcase-thumb-title" data-i18n="thumbTitle1">Air & Pollen</span>
-          <span class="showcase-thumb-desc" data-i18n="thumbDesc1">Open-Meteo weather stats</span>
+          <span class="showcase-thumb-title" data-i18n="thumbTitle1">Smart Tracking</span>
+          <span class="showcase-thumb-desc" data-i18n="thumbDesc1">Delay timer & remedies</span>
         </div>
       </div>
 
@@ -233,7 +233,7 @@
     </div>
   </section>
 
-  <!-- Key Features Grid (Expanded to 8 Rich Cards) -->
+  <!-- Key Features Grid (Expanded to 10 Rich Cards) -->
   <section id="features" class="features-section">
     <div class="section-head">
       <span class="tag" data-i18n="featuresTag">Comprehensive Feature Suite</span>
@@ -272,46 +272,64 @@
       <!-- Feature 4 -->
       <div class="feature-card">
         <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
         </div>
-        <h3 data-i18n="feat4Title">Pollen & Outdoor Air Quality</h3>
-        <p data-i18n="feat4Desc">Correlates night-time breathing with Open-Meteo & CAMS outdoor data: tracks birch, grass, and ragweed pollen, humidity, PM2.5, and air pressure.</p>
+        <h3 data-i18n="feat4Title">Home Screen Widgets</h3>
+        <p data-i18n="feat4Desc">Glance at last night's snore score, sound duration, and your active streak right from your home screen with native iOS SwiftUI & Android AppWidget extensions.</p>
       </div>
 
       <!-- Feature 5 -->
       <div class="feature-card">
         <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </div>
-        <h3 data-i18n="feat5Title">Goal Streaks & Lifestyle Trends</h3>
-        <p data-i18n="feat5Desc">Set custom quiet goals and build streaks. Analyze weekday vs. weekend patterns to see how late nights or alcohol impact your rest.</p>
+        <h3 data-i18n="feat5Title">Apple Health & Health Connect</h3>
+        <p data-i18n="feat5Desc">Correlate your snoring intensity with pulse rate, blood oxygen (SpO2), heart rate variability (HRV), respiration rate, and sleep stages without manual logging.</p>
       </div>
 
       <!-- Feature 6 -->
       <div class="feature-card">
         <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </div>
-        <h3 data-i18n="feat6Title">Native Audio Compaction</h3>
-        <p data-i18n="feat6Desc">Keeps only the snoring parts of older nights (80MB trimmed to 5-15MB) via lossless native audio trimming, keeping all your statistics intact.</p>
+        <h3 data-i18n="feat6Title">Pollen & Outdoor Air Quality</h3>
+        <p data-i18n="feat6Desc">Correlates night-time breathing with Open-Meteo & CAMS outdoor data: tracks birch, grass, and ragweed pollen, humidity, PM2.5, and air pressure.</p>
       </div>
 
       <!-- Feature 7 -->
       <div class="feature-card">
         <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
         </div>
-        <h3 data-i18n="feat7Title">Clinical Doctor PDF Report</h3>
-        <p data-i18n="feat7Desc">Generate clean clinical PDF reports for doctor consultations, with an in-app interactive preview before sending or printing.</p>
+        <h3 data-i18n="feat7Title">Goal Streaks & Lifestyle Trends</h3>
+        <p data-i18n="feat7Desc">Set custom quiet goals and build streaks. Analyze weekday vs. weekend patterns to see how late nights or alcohol impact your rest.</p>
       </div>
 
       <!-- Feature 8 -->
       <div class="feature-card">
         <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <h3 data-i18n="feat8Title">Native Audio Compaction</h3>
+        <p data-i18n="feat8Desc">Keeps only the snoring parts of older nights (80MB trimmed to 5-15MB) via lossless native audio trimming, keeping all your statistics intact.</p>
+      </div>
+
+      <!-- Feature 9 -->
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <h3 data-i18n="feat9Title">Clinical Doctor PDF Report</h3>
+        <p data-i18n="feat9Desc">Generate clean clinical PDF reports for doctor consultations, with an in-app interactive preview before sending or printing.</p>
+      </div>
+
+      <!-- Feature 10 -->
+      <div class="feature-card">
+        <div class="feature-icon-box">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </div>
-        <h3 data-i18n="feat8Title">OLED Anti-Burn Night Clock & Alarm Sync</h3>
-        <p data-i18n="feat8Desc">Pure black dimmed clock mode with minute-by-minute pixel shift to protect your OLED screen, plus automatic session finalization when your morning alarm rings.</p>
+        <h3 data-i18n="feat10Title">OLED Anti-Burn Night Clock & Alarm Sync</h3>
+        <p data-i18n="feat10Desc">Pure black dimmed clock mode with minute-by-minute pixel shift to protect your OLED screen, plus automatic session finalization when your morning alarm rings.</p>
       </div>
     </div>
   </section>
