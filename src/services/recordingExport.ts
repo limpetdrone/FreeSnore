@@ -2,12 +2,14 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import type { SleepSession } from '../types/session';
 import { t } from '../i18n';
+import { resolveAppFileUri } from './appFiles';
 
 const EXPORT_PREFIX = 'FreeSnore-';
 
 /** The night's whole recording (older sessions only reference it through their clips). */
 export function nightRecordingUri(session: SleepSession): string | undefined {
-  return session.audioUri ?? session.clips?.find((c) => c.audioUri)?.audioUri;
+  const uri = session.audioUri ?? session.clips?.find((c) => c.audioUri)?.audioUri;
+  return uri ? resolveAppFileUri(uri) : undefined;
 }
 
 /** Size of the night's recording in bytes, or null when there is none on this device. */

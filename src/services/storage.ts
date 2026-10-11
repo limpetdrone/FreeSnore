@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SleepSession, AppSettings } from '../types/session';
 import { createMockSessions } from './mockData';
+import { resolveAppFileUri } from './appFiles';
 
 const SESSIONS_STORAGE_KEY = '@freesnore_sessions_v1';
 const SETTINGS_STORAGE_KEY = '@freesnore_settings_v1';
@@ -60,7 +61,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
     );
     for (const uri of audioUris) {
       try {
-        await FileSystem.deleteAsync(uri, { idempotent: true });
+        await FileSystem.deleteAsync(resolveAppFileUri(uri), { idempotent: true });
       } catch (e) {
         console.warn('Could not delete audio file:', uri, e);
       }

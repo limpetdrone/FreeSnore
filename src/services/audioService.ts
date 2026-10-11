@@ -12,6 +12,7 @@ import { Platform } from 'react-native';
 import { SnoreIntensity, SnoreClip, TimelineSample } from '../types/session';
 import { SnoreEventCandidate, snoreClassifier } from './snoreDetector';
 import { MinuteBucket, PauseInterval, audioFileOffsetSeconds, buildTimeline, emptyBucket } from './timeline';
+import { resolveAppFileUri } from './appFiles';
 
 export interface LiveAudioStatus {
   currentDb: number;
@@ -495,13 +496,20 @@ export class SleepMonitorService {
    * seeks to the clip offset (-1s padding) and stops after clip duration.
    */
   async playClip(
-    audioUri: string,
+    storedUri: string,
     offsetSeconds: number,
     durationSeconds: number,
     onEnd: () => void
   ): Promise<boolean> {
     try {
       this.stopPlayback();
+
+      // A missing file would play silence without any error
+      const audioUri = resolveAppFileUri(storedUri);
+      if (!(await FileSystem.getInfoAsync(audioUri)).exists) {
+        console.warn('Recording not found:', audioUri);
+        return false;
+      }
 
       await setAudioModeAsync({
         allowsRecording: false,
