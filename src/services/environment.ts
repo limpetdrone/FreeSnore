@@ -99,7 +99,7 @@ const BACKFILL_MS = 2 * 24 * 3600 * 1000; // The requests reach two days back
  */
 export async function fillMissingEnvironment(
   sessions: SleepSession[],
-  save: (session: SleepSession) => Promise<void>
+  patch: (id: string, change: (current: SleepSession) => SleepSession) => Promise<SleepSession | null>
 ): Promise<SleepSession[]> {
   const now = Date.now();
   const updated: SleepSession[] = [];
@@ -107,9 +107,9 @@ export async function fillMissingEnvironment(
     if (session.environment || now - new Date(session.endTime).getTime() > BACKFILL_MS) continue;
     const environment = await fetchNightEnvironment(session);
     if (!environment) break; // No permission or offline: the next nights would fail the same way
-    const withEnvironment = { ...session, environment };
-    await save(withEnvironment);
-    updated.push(withEnvironment);
+    // Only this field: the stored night may have been compacted meanwhile
+    const saved = await patch(session.id, (current) => ({ ...current, environment }));
+    if (saved) updated.push(saved);
   }
   return updated;
 }

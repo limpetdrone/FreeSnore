@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import type { AppSettings, SleepSession } from '../types/session';
 import { extractSegments, audioSegmentsAvailable } from '../../modules/audio-segments';
-import { getSessions, getSettings, updateSession, DEFAULT_SETTINGS } from './storage';
+import { getSessions, getSettings, patchSession, DEFAULT_SETTINGS } from './storage';
 import { nightRecordingUri } from './recordingExport';
 import { compactedSession, mergeRanges, retentionAction, snoringRanges, withoutAudio } from './recordingCompaction';
 import { t } from '../i18n';
@@ -34,8 +34,21 @@ export async function compactRecording(session: SleepSession): Promise<SleepSess
 
   const destination = source.replace(/(\.m4a)?$/i, '-snoring.m4a');
   const copied = await extractSegments(source, ranges, destination);
-  const updated = compactedSession(session, copied, destination);
-  await updateSession(updated);
+  let updated: SleepSession | null;
+  try {
+    // Only the audio fields change; the stored night may have gained e.g. pollen data meanwhile
+    updated = await patchSession(session.id, (current) =>
+      current.audioCompacted ? current : compactedSession(current, copied, destination)
+    );
+  } catch (e) {
+    await FileSystem.deleteAsync(destination, { idempotent: true });
+    throw e; // The night still points at the untouched original
+  }
+  if (!updated || updated.audioUri !== destination) {
+    // Deleted or compacted meanwhile: the new copy is not needed, the original is not ours
+    await FileSystem.deleteAsync(destination, { idempotent: true });
+    return updated ?? session;
+  }
   await FileSystem.deleteAsync(source, { idempotent: true });
   return updated;
 }
@@ -43,8 +56,7 @@ export async function compactRecording(session: SleepSession): Promise<SleepSess
 /** Deletes the night's recording; the statistics and the timeline stay. */
 export async function deleteRecording(session: SleepSession): Promise<SleepSession> {
   const files = nightFiles(session);
-  const updated = withoutAudio(session);
-  await updateSession(updated);
+  const updated = (await patchSession(session.id, withoutAudio)) ?? withoutAudio(session);
   for (const uri of files) {
     await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
   }

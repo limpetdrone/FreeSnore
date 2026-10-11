@@ -51,7 +51,7 @@ export async function fetchNightHealth(session: SleepSession): Promise<NightHeal
 /** Reads the health data of recent nights that have none yet (or got it before the watch synced). */
 export async function fillMissingHealth(
   sessions: SleepSession[],
-  save: (session: SleepSession) => Promise<void>
+  patch: (id: string, change: (current: SleepSession) => SleepSession) => Promise<SleepSession | null>
 ): Promise<SleepSession[]> {
   const now = Date.now();
   const updated: SleepSession[] = [];
@@ -59,9 +59,9 @@ export async function fillMissingHealth(
     if (!needsHealthFetch(session, now)) continue;
     const health = await fetchNightHealth(session);
     if (!health) break; // Not available or not permitted: the other nights would fail too
-    const withHealth = { ...session, health };
-    await save(withHealth);
-    updated.push(withHealth);
+    // Only this field: the stored night may have been compacted meanwhile
+    const saved = await patch(session.id, (current) => ({ ...current, health }));
+    if (saved) updated.push(saved);
   }
   return updated;
 }

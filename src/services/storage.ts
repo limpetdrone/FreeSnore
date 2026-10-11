@@ -40,25 +40,55 @@ export async function getSessions(): Promise<SleepSession[]> {
   }
 }
 
-export async function saveSession(session: SleepSession): Promise<void> {
-  try {
+// Every write reads the whole list and writes it back: writes run one after the other, or a
+// slower one would bring back a night as it was before a faster one changed it
+let writeQueue: Promise<unknown> = Promise.resolve();
+function serialized<T>(write: () => Promise<T>): Promise<T> {
+  const run = writeQueue.then(write, write);
+  writeQueue = run.catch(() => {});
+  return run;
+}
+
+export function saveSession(session: SleepSession): Promise<void> {
+  return serialized(async () => {
+    try {
+      const existing = await getSessions();
+      const updated = [session, ...existing.filter((s) => s.id !== session.id)];
+      await AsyncStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (error) {
+      console.error('Failed to save session:', error);
+      throw error;
+    }
+  });
+}
+
+/**
+ * Changes one saved night in place. `change` gets the night as currently stored (not an older
+ * copy the caller may hold), so concurrent changes to different fields all survive.
+ * Returns the updated night, or null if it no longer exists.
+ */
+export function patchSession(
+  id: string,
+  change: (current: SleepSession) => SleepSession
+): Promise<SleepSession | null> {
+  return serialized(async () => {
     const existing = await getSessions();
-    const updated = [session, ...existing.filter((s) => s.id !== session.id)];
-    await AsyncStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(updated));
-  } catch (error) {
-    console.error('Failed to save session:', error);
-    throw error;
-  }
+    const current = existing.find((s) => s.id === id);
+    if (!current) return null;
+    const updated = change(current);
+    await AsyncStorage.setItem(
+      SESSIONS_STORAGE_KEY,
+      JSON.stringify(existing.map((s) => (s.id === id ? updated : s)))
+    );
+    return updated;
+  });
 }
 
-/** Replaces a saved night in place (keeps the order of the list). */
-export async function updateSession(session: SleepSession): Promise<void> {
-  const existing = await getSessions();
-  const updated = existing.map((s) => (s.id === session.id ? session : s));
-  await AsyncStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(updated));
+export function deleteSession(sessionId: string): Promise<void> {
+  return serialized(() => deleteSessionNow(sessionId));
 }
 
-export async function deleteSession(sessionId: string): Promise<void> {
+async function deleteSessionNow(sessionId: string): Promise<void> {
   try {
     const existing = await getSessions();
     const sessionToDelete = existing.find((s) => s.id === sessionId);

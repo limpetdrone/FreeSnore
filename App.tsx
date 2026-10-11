@@ -17,7 +17,7 @@ import { applyRecordingRetention } from './src/services/recordingStorage';
 import { fillMissingEnvironment } from './src/services/environment';
 import { fillMissingHealth } from './src/services/health';
 import { updateWidgets } from './src/widgets/updateWidgets';
-import { updateSession } from './src/services/storage';
+import { patchSession } from './src/services/storage';
 import { SleepSession } from './src/types/session';
 import { getSessions, getSettings } from './src/services/storage';
 import { initNotifications } from './src/services/notificationService';
@@ -43,8 +43,8 @@ export default function App() {
   const fetchEnvironment = async () => {
     const settings = await getSettings();
     const updated = [
-      ...(settings.environmentData ? await fillMissingEnvironment(await getSessions(), updateSession) : []),
-      ...(settings.healthData ? await fillMissingHealth(await getSessions(), updateSession) : []),
+      ...(settings.environmentData ? await fillMissingEnvironment(await getSessions(), patchSession) : []),
+      ...(settings.healthData ? await fillMissingHealth(await getSessions(), patchSession) : []),
     ];
     if (updated.length === 0) return;
     loadData();
