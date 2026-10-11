@@ -1,12 +1,7 @@
 import type { SleepSession } from '../types/session';
-import LastNightWidget from './LastNightWidget';
-import { buildWidgetData } from './widgetData';
 
-/** Shows the latest night on the iOS home screen widget. */
-export async function updateWidgets(sessions: SleepSession[], goal: number): Promise<void> {
-  try {
-    LastNightWidget.updateSnapshot(buildWidgetData(sessions, goal));
-  } catch (e) {
-    console.warn('Could not update the widget:', e);
-  }
-}
+// The iOS widget (LastNightWidget.tsx) is turned off until the App Groups capability is enabled
+// for com.limpetdrone.freesnore.ExpoWidgetsTarget in the Apple developer portal (EAS cannot
+// enable it through the API). To turn it back on: add the expo-widgets plugin to app.json
+// (see git history) and restore the LastNightWidget.updateSnapshot(buildWidgetData(...)) call.
+export async function updateWidgets(_sessions: SleepSession[], _goal: number): Promise<void> {}

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SleepSession, TimelineSample } from '../../types/session';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot import
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
