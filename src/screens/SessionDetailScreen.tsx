@@ -21,6 +21,8 @@ import { PdfPreviewModal } from '../components/PdfPreviewModal';
 import { REFERENCES, summarizeNight } from '../services/nightSummary';
 import { snoringTimeSeconds } from '../services/timeline';
 import { exportNightRecording, nightRecordingSize } from '../services/recordingExport';
+import { shareBestOf } from '../services/recordingStorage';
+import { EnvironmentInfo } from '../components/EnvironmentInfo';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
 interface SessionDetailScreenProps {
@@ -57,6 +59,16 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
       active = false;
     };
   }, [session]);
+
+  const [isSharingBestOf, setIsSharingBestOf] = useState(false);
+  const handleBestOf = async () => {
+    setIsSharingBestOf(true);
+    const result = await shareBestOf(session);
+    setIsSharingBestOf(false);
+    if (result === 'missing') Alert.alert(t('appTitle'), t('exportRecordingMissing'));
+    else if (result === 'unavailable') Alert.alert(t('appTitle'), t('bestOfUnavailable'));
+    else if (result === 'error') Alert.alert(t('appTitle'), t('bestOfError'));
+  };
 
   const handleExportRecording = async () => {
     setIsExportingAudio(true);
@@ -271,6 +283,14 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
               />
             </View>
 
+            {/* Outdoor conditions */}
+            {session.environment && (
+              <View style={styles.card}>
+                <Text style={styles.sectionHeading}>{t('environmentNight')}</Text>
+                <EnvironmentInfo environment={session.environment} />
+              </View>
+            )}
+
             {/* Factors */}
             {session.factors && session.factors.length > 0 && (
               <View style={styles.card}>
@@ -308,13 +328,42 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
                     <Ionicons name="download-outline" size={22} color={COLORS.primaryLight} />
                   )}
                   <View style={styles.exportTextBox}>
-                    <Text style={styles.sectionHeading}>{t('exportRecordingBtn')}</Text>
+                    <Text style={styles.sectionHeading}>
+                      {t(session.audioCompacted ? 'exportSnoringBtn' : 'exportRecordingBtn')}
+                    </Text>
                     <Text style={[styles.hintText, { marginBottom: 0 }]}>
-                      {t('exportRecordingDesc', { size: Math.max(1, Math.round(recordingBytes / 1e6)) })}
+                      {t(session.audioCompacted ? 'exportSnoringDesc' : 'exportRecordingDesc', {
+                        size: Math.max(1, Math.round(recordingBytes / 1e6)),
+                      })}
                     </Text>
                   </View>
                 </View>
               </TouchableOpacity>
+            )}
+            {recordingBytes !== null && (
+              <TouchableOpacity
+                style={styles.card}
+                onPress={handleBestOf}
+                disabled={isSharingBestOf}
+                activeOpacity={0.8}
+              >
+                <View style={styles.exportRow}>
+                  {isSharingBestOf ? (
+                    <ActivityIndicator color={COLORS.primaryLight} />
+                  ) : (
+                    <Ionicons name="sparkles-outline" size={22} color={COLORS.primaryLight} />
+                  )}
+                  <View style={styles.exportTextBox}>
+                    <Text style={styles.sectionHeading}>{t('bestOfTitle')}</Text>
+                    <Text style={[styles.hintText, { marginBottom: 0 }]}>{t('bestOfDesc')}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+            {session.audioRemoved && (
+              <View style={styles.card}>
+                <Text style={[styles.hintText, { marginBottom: 0 }]}>{t('audioRemovedNote')}</Text>
+              </View>
             )}
             <View style={styles.card}>
               <Text style={styles.sectionHeading}>{t('recordedClipsTitle')}</Text>

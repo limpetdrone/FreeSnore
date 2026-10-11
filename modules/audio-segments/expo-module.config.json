@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["AudioSegmentsModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.audiosegments.AudioSegmentsModule"]
+  }
+}

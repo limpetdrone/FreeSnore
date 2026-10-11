@@ -4,6 +4,7 @@ import { SnorePattern, summarizeNight } from './nightSummary';
 import { snoringTimeSeconds } from './timeline';
 import { compareFactors } from './factorStats';
 import { compareWeekend } from './nightStats';
+import { compareEnvironment, EnvironmentMetric } from './environmentStats';
 
 export interface PeriodSummary {
   sentences: string[];
@@ -12,6 +13,22 @@ export interface PeriodSummary {
 
 const avg = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0);
 const MIN_FACTOR_DELTA_PCT = 20;
+
+const METRIC_TEXT = {
+  pollen: 'metricPollen',
+  humidity: 'metricHumidity',
+  temperature: 'metricTemperature',
+  pressure: 'metricPressure',
+  pm10: 'metricPm10',
+} as const satisfies Record<EnvironmentMetric, string>;
+
+const METRIC_INSIGHT = {
+  pollen: 'insightEnvPollen',
+  humidity: 'insightEnvHumidity',
+  temperature: 'insightEnvTemperature',
+  pressure: 'insightEnvPressure',
+  pm10: 'insightEnvPm10',
+} as const satisfies Record<EnvironmentMetric, string>;
 
 /**
  * Short description of several nights (a week, a month or any period), for the history
@@ -114,6 +131,19 @@ export function summarizePeriod(sessions: SleepSession[]): PeriodSummary | null 
     }
   }
 
+  // The outdoor condition that went with the biggest difference (pollen, humidity...)
+  const environment = compareEnvironment(nights).find((c) => Math.abs(c.deltaPct) >= MIN_FACTOR_DELTA_PCT);
+  if (environment) {
+    sentences.push(
+      t('periodEnvironment', {
+        metric: t(METRIC_TEXT[environment.metric]).toLowerCase(),
+        pct: Math.abs(environment.deltaPct),
+        direction: t(environment.deltaPct > 0 ? 'directionHigher' : 'directionLower'),
+      })
+    );
+    insights.push(t(METRIC_INSIGHT[environment.metric]));
+  }
+
   // The habit or remedy that changed the score the most in this period
   const factor = compareFactors(nights, 2)
     .filter((f) => Math.abs(f.deltaPct) >= MIN_FACTOR_DELTA_PCT)
@@ -127,5 +157,7 @@ export function summarizePeriod(sessions: SleepSession[]): PeriodSummary | null 
     );
   }
 
-  return { sentences, insights };
+  // The advice to see a doctor stays last
+  const doctor = t('insightDoctor');
+  return { sentences, insights: [...insights.filter((i) => i !== doctor), ...insights.filter((i) => i === doctor)] };
 }

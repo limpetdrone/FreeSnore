@@ -58,7 +58,7 @@ export interface SleepSession {
 
 export interface AppSettings {
   startDelayMinutes: number; // Default start delay (e.g. 15 mins)
-  sensitivity: 'low' | 'medium' | 'high';
+  sensitivity: 'low' | 'medium' | 'high'; // No longer used: the detection threshold is fixed
   keepAwake: boolean;
   saveAudioClips: boolean;
   maxClipsPerSession: number;

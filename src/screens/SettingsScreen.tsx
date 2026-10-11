@@ -6,23 +6,62 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getSettings, saveSettings, DEFAULT_SETTINGS } from '../services/storage';
+import { getSettings, getSessions, saveSettings, DEFAULT_SETTINGS } from '../services/storage';
+import { applyRecordingRetention, recordingUsage, RecordingUsage } from '../services/recordingStorage';
+import { requestEnvironmentPermission } from '../services/environment';
 import { AppSettings } from '../types/session';
 import { COLORS } from '../constants/theme';
 import { t, getLanguage, setLanguage, Language } from '../i18n';
 
 interface SettingsScreenProps {
   onLanguageChange?: (lang: Language) => void;
+  onRecordingsChanged?: () => void; // Nights were compacted or their audio deleted
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange }) => {
+const formatBytes = (bytes: number) =>
+  bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / 1e6))} MB`;
+
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange, onRecordingsChanged }) => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [usage, setUsage] = useState<RecordingUsage | null>(null);
+  const [isCompacting, setIsCompacting] = useState(false);
+
+  const refreshUsage = () => getSessions().then(recordingUsage).then(setUsage);
 
   useEffect(() => {
     getSettings().then(setSettings);
+    refreshUsage();
   }, []);
+
+  // Applies changed retention settings right away (e.g. "delete after 30 days")
+  const updateRetention = async <K extends 'keepFullNightDays' | 'deleteAudioAfterDays'>(key: K, value: AppSettings[K]) => {
+    updateSetting(key, value);
+    await saveSettings({ ...settings, [key]: value });
+    if (await applyRecordingRetention()) onRecordingsChanged?.();
+    refreshUsage();
+  };
+
+  // Pollen and weather need the (approximate) location: ask when turned on
+  const toggleEnvironment = async (on: boolean) => {
+    if (on && !(await requestEnvironmentPermission())) {
+      Alert.alert(t('environmentTitle'), t('environmentPermissionDenied'));
+      return;
+    }
+    updateSetting('environmentData', on);
+  };
+
+  const compactNow = async () => {
+    setIsCompacting(true);
+    const count = await applyRecordingRetention(true);
+    setIsCompacting(false);
+    refreshUsage();
+    if (count > 0) onRecordingsChanged?.();
+    Alert.alert(t('storageTitle'), count > 0 ? t('compactDone', { count }) : t('compactNothing'));
+  };
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     const updated = { ...settings, [key]: value };
@@ -124,38 +163,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
         </View>
       </View>
 
-      {/* Sensitivity section */}
-      <View style={styles.card}>
-        <View style={styles.cardRow}>
-          <Ionicons name="disc-outline" size={20} color={COLORS.accent} />
-          <Text style={styles.cardTitle}>{t('sensitivityTitle')}</Text>
-        </View>
-        <Text style={styles.cardDesc}>{t('sensitivityDesc')}</Text>
-
-        <View style={styles.chipsRow}>
-          {(['low', 'medium', 'high'] as const).map((sens) => (
-            <TouchableOpacity
-              key={sens}
-              style={[
-                styles.chip,
-                settings.sensitivity === sens && styles.chipActive,
-              ]}
-              onPress={() => updateSetting('sensitivity', sens)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  settings.sensitivity === sens && styles.chipTextActive,
-                ]}
-              >
-                {sens === 'low' ? t('sensLow') : sens === 'medium' ? t('sensMed') : t('sensHigh')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Toggles */}
       <View style={styles.card}>
         <View style={styles.switchRow}>
           <View style={{ flex: 1, marginRight: 12 }}>
@@ -205,6 +212,77 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLanguageChange
             trackColor={{ false: COLORS.surfaceHighlight, true: COLORS.primary }}
           />
         </View>
+      </View>
+
+      {/* Pollen and weather */}
+      <View style={styles.card}>
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={styles.switchLabel}>{t('environmentTitle')}</Text>
+            <Text style={styles.switchDesc}>{t('environmentToggleDesc')}</Text>
+          </View>
+          <Switch
+            value={!!settings.environmentData}
+            onValueChange={toggleEnvironment}
+            trackColor={{ false: COLORS.surfaceHighlight, true: COLORS.primary }}
+          />
+        </View>
+      </View>
+
+      {/* Recordings and storage */}
+      <View style={styles.card}>
+        <View style={styles.cardRow}>
+          <Ionicons name="folder-open-outline" size={20} color={COLORS.cyan} />
+          <Text style={styles.cardTitle}>{t('storageTitle')}</Text>
+        </View>
+        {usage && (
+          <Text style={styles.cardDesc}>
+            {t('storageUsage', { nights: usage.nights, size: formatBytes(usage.bytes) })}
+            {usage.wholeNights > 0 ? ` (${t('storageWholeNights', { count: usage.wholeNights })})` : ''}
+          </Text>
+        )}
+
+        <Text style={styles.switchLabel}>{t('keepFullNightTitle')}</Text>
+        <Text style={styles.switchDesc}>{t('keepFullNightDesc')}</Text>
+        <View style={[styles.chipsRow, { marginBottom: 14 }]}>
+          {[1, 3, 7, null].map((days) => (
+            <TouchableOpacity
+              key={String(days)}
+              style={[styles.chip, (settings.keepFullNightDays ?? null) === days && styles.chipActive]}
+              onPress={() => updateRetention('keepFullNightDays', days)}
+            >
+              <Text style={[styles.chipText, (settings.keepFullNightDays ?? null) === days && styles.chipTextActive]}>
+                {days === null ? t('keepFullNightAlways') : t('daysOption', { days })}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.switchLabel}>{t('deleteAudioTitle')}</Text>
+        <Text style={styles.switchDesc}>{t('deleteAudioDesc')}</Text>
+        <View style={[styles.chipsRow, { marginBottom: 14 }]}>
+          {[null, 30, 90].map((days) => (
+            <TouchableOpacity
+              key={String(days)}
+              style={[styles.chip, (settings.deleteAudioAfterDays ?? null) === days && styles.chipActive]}
+              onPress={() => updateRetention('deleteAudioAfterDays', days)}
+            >
+              <Text style={[styles.chipText, (settings.deleteAudioAfterDays ?? null) === days && styles.chipTextActive]}>
+                {days === null ? t('deleteAudioNever') : t('daysOption', { days })}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {usage && usage.wholeNights > 0 && (
+          <TouchableOpacity style={styles.chip} onPress={compactNow} disabled={isCompacting}>
+            {isCompacting ? (
+              <ActivityIndicator size="small" color={COLORS.primaryLight} />
+            ) : (
+              <Text style={styles.chipText}>{t('compactNowBtn')}</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* About & TestFlight Info */}

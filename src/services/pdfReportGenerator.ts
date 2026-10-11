@@ -7,6 +7,7 @@ import { citedReferences, REFERENCES, summarizeNight } from './nightSummary';
 import { summarizePeriod } from './periodSummary';
 import { binTimeline, columnFill, snoringTimeSeconds } from './timeline';
 import { compareFactors } from './factorStats';
+import { environmentLines } from './environmentStats';
 
 const escapeHtml = (text: string) =>
   text
@@ -210,6 +211,14 @@ export function buildPdfReportHtml(session: SleepSession): string {
   ${
     session.factors && session.factors.length > 0
       ? `<div class="section-title">${escapeHtml(t('habitsAndRemedies'))}</div><div>${factorChips(session.factors)}</div>`
+      : ''
+  }
+
+  ${
+    session.environment
+      ? `<div class="section-title">${escapeHtml(t('environmentNight'))}</div>
+  <p>${environmentLines(session.environment).map(escapeHtml).join(' · ')}</p>
+  <p class="muted" style="font-size: 10px;">${escapeHtml(t('environmentSource'))}</p>`
       : ''
   }
 

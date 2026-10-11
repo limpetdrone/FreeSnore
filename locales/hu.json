@@ -1,0 +1,4 @@
+{
+  "NSMicrophoneUsageDescription": "A FreeSnore a mikrofont használja a horkolás alvás közbeni érzékeléséhez és elemzéséhez.",
+  "NSLocationWhenInUseUsageDescription": "A FreeSnore a hozzávetőleges helyed (kb. 10 km) alapján kéri le a környéked pollen- és időjárási adatait, hogy összevesse őket a horkolásoddal. A helyed nem kerül tárolásra."
+}

@@ -15,6 +15,7 @@ import { PeriodReportPanel } from '../components/PeriodReportPanel';
 import { PeriodSummaryCard } from '../components/PeriodSummaryCard';
 import { StreakCard } from '../components/StreakCard';
 import { WeekendCard } from '../components/WeekendCard';
+import { EnvironmentCard } from '../components/EnvironmentCard';
 import { getSettings, DEFAULT_SETTINGS } from '../services/storage';
 import { COLORS } from '../constants/theme';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
@@ -192,6 +193,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             <MonthlyChart sessions={sessions} />
             <PeriodSummaryCard sessions={sessions} days={30} title={t('monthSummaryTitle')} />
             <WeekendCard sessions={lastMonth} />
+            {sessions.some((s) => s.environment) && <EnvironmentCard sessions={sessions} />}
 
             <Text style={[styles.sectionHeader, { marginTop: 16 }]}>
               {t('recordedNights', { count: sessions.length })}

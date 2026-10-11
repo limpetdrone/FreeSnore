@@ -13,6 +13,9 @@ import { RecordScreen } from './src/screens/RecordScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
 import { SessionDetailScreen } from './src/screens/SessionDetailScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { applyRecordingRetention } from './src/services/recordingStorage';
+import { fillMissingEnvironment } from './src/services/environment';
+import { updateSession } from './src/services/storage';
 import { SleepSession } from './src/types/session';
 import { getSessions, getSettings } from './src/services/storage';
 import { initNotifications } from './src/services/notificationService';
@@ -32,8 +35,23 @@ export default function App() {
     setSessions(data);
   };
 
+  // Pollen and weather of recent nights, when turned on in the settings
+  const fetchEnvironment = async () => {
+    const settings = await getSettings();
+    if (!settings.environmentData) return;
+    const updated = await fillMissingEnvironment(await getSessions(), updateSession);
+    if (updated.length === 0) return;
+    loadData();
+    setSelectedSession((current) => updated.find((s) => s.id === current?.id) ?? current);
+  };
+
   useEffect(() => {
     loadData();
+    // Old whole-night recordings become their snoring parts (or go) as set in the settings
+    applyRecordingRetention().then((changed) => {
+      if (changed > 0) loadData();
+    });
+    fetchEnvironment();
     initNotifications();
     getSettings().then((s) => {
       if (s.language) {
@@ -56,6 +74,7 @@ export default function App() {
   const handleSessionFinished = (session: SleepSession) => {
     loadData();
     setSelectedSession(session);
+    fetchEnvironment();
   };
 
   const handleSelectSession = (session: SleepSession) => {
@@ -106,7 +125,7 @@ export default function App() {
               onRefresh={loadData}
             />
           ) : (
-            <SettingsScreen onLanguageChange={setLanguageState} />
+            <SettingsScreen onLanguageChange={setLanguageState} onRecordingsChanged={loadData} />
           )}
         </View>
 

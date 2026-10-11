@@ -56,11 +56,10 @@ const REMEDY_KEYS = [
   'remedyNasalSpray',
 ] as const;
 
-const SENSITIVITY_MIN_DB: Record<AppSettings['sensitivity'], number> = {
-  low: 52,
-  medium: 44,
-  high: 38,
-};
+// Quietest sound that can count as a snore. Not a user setting: the detector already adapts to
+// the room's noise floor, and on a real recorded night lower values missed half of the snores
+// while higher ones picked up restless movement (scripts/audio-fixtures/night-regression.json)
+const MIN_SNORE_DB = 44;
 
 const formatClock = (d: Date) =>
   `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
@@ -249,7 +248,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
       },
       {
         delaySeconds: selectedDelay * 60,
-        minSnoreDb: SENSITIVITY_MIN_DB[settings.sensitivity],
+        minSnoreDb: MIN_SNORE_DB,
         maxClips: settings.maxClipsPerSession,
         saveAudio: settings.saveAudioClips,
         keepFullRecording: settings.keepFullRecording,

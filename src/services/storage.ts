@@ -18,6 +18,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keepFullRecording: false,
   stopOnAlarm: true,
   snoreGoal: 25,
+  keepFullNightDays: 3,
+  deleteAudioAfterDays: null,
 };
 
 export async function getSessions(): Promise<SleepSession[]> {
@@ -47,6 +49,13 @@ export async function saveSession(session: SleepSession): Promise<void> {
     console.error('Failed to save session:', error);
     throw error;
   }
+}
+
+/** Replaces a saved night in place (keeps the order of the list). */
+export async function updateSession(session: SleepSession): Promise<void> {
+  const existing = await getSessions();
+  const updated = existing.map((s) => (s.id === session.id ? session : s));
+  await AsyncStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(updated));
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {

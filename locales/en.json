@@ -1,0 +1,4 @@
+{
+  "NSMicrophoneUsageDescription": "FreeSnore uses the microphone to detect and analyse snoring while you sleep.",
+  "NSLocationWhenInUseUsageDescription": "FreeSnore uses your approximate location (about 10 km) to fetch pollen and weather data for your area and compare them with your snoring. Your location is not stored."
+}

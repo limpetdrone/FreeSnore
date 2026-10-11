@@ -34,6 +34,9 @@ export const REFERENCES: Record<number, string> = {
   6: 'REM sleep obstructive sleep apnoea. Eur Respir Rev. 2024;33(171):230166.',
   7: 'Definition of the snoring episode index based on the analyses of snoring parameters and the apnea hypopnea index. Sci Rep. 2022. doi:10.1038/s41598-022-10934-1.',
   8: 'Snoring index and neck circumference as predictors of adult obstructive sleep apnea. Healthcare. 2022;10(12):2543.',
+  9: 'Zanobetti A, et al. Associations of PM10 with sleep and sleep-disordered breathing in adults from seven U.S. urban areas. Am J Respir Crit Care Med. 2010;182(6):819-825.',
+  10: 'Do weather-related ambient atmospheric-pressure changes influence sleep disordered breathing? J Clin Sleep Med. 2010;6(2).',
+  11: 'Obstructive sleep apnea severity varies by season and environmental influences such as ambient temperature. Commun Med. 2025. doi:10.1038/s43856-025-01016-0.',
 };
 
 // Snoring minutes closer than this belong to the same episode
