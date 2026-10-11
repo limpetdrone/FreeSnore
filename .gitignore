@@ -44,3 +44,6 @@ yarn-error.*
 scripts/audio-fixtures/downloads/
 # Real nights for the regression check (private recordings, never committed)
 scripts/audio-fixtures/private/
+
+# Gradle output of the local native modules
+modules/*/android/build/
