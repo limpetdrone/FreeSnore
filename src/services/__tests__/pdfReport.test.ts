@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from '@jest/globals';
 import { buildPdfReportHtml, buildPeriodReportHtml, PDF_TIMELINE_COLUMNS, sessionsInPeriod } from '../pdfReportGenerator';
 import { binTimeline, snoringTimeSeconds } from '../timeline';
+import { summarizePeriod } from '../periodSummary';
 import { setLanguage } from '../../i18n';
 import type { SleepSession, TimelineSample } from '../../types/session';
 
@@ -87,5 +88,25 @@ describe('period PDF report', () => {
   it('says so when the period has no nights', () => {
     const html = buildPeriodReportHtml(nights, { from: new Date(2026, 8, 1), to: new Date(2026, 8, 7) });
     expect(html).toContain('No nights were recorded in this period.');
+  });
+});
+
+describe('summarizePeriod', () => {
+  beforeAll(() => setLanguage('en'));
+
+  it('describes a week in a few sentences', () => {
+    const week = [5, 6, 7, 8, 9, 10, 11].map((d) => longNight(d, d % 2 ? ['factorAlcohol'] : []));
+    const summary = summarizePeriod(week)!;
+    expect(summary.sentences[0]).toBe(
+      'You recorded 7 nights. You snored for 25% of your sleep, 1h 22m per night on average; the average score was 38.'
+    );
+    // Scores 35..41: a 5-point rise is within the noise
+    expect(summary.sentences).toContain('Snoring stayed about the same over the period.');
+    expect(summary.sentences).toContain('The quietest night was Mon, Oct 5 (35 points), the loudest Sun, Oct 11 (41 points).');
+    expect(summary.insights.length).toBeGreaterThan(0);
+  });
+
+  it('returns null without nights', () => {
+    expect(summarizePeriod([])).toBeNull();
   });
 });

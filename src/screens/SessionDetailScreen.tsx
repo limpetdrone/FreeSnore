@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -38,6 +38,15 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
 }) => {
   const summary = useMemo(() => summarizeNight(session, history), [session, history]);
   const [timelineFocus, setTimelineFocus] = useState<{ minute: number } | undefined>();
+  const scrollRef = useRef<ScrollView>(null);
+  const timelineY = useRef(0);
+
+  // Select the longest episode and bring the timeline into view (it is below the fold)
+  const showLongestEpisode = () => {
+    if (!summary?.longestEpisode) return;
+    setTimelineFocus({ minute: summary.longestEpisode.peakMinute });
+    scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current - 12), animated: true });
+  };
   const [recordingBytes, setRecordingBytes] = useState<number | null>(null);
   const [isExportingAudio, setIsExportingAudio] = useState(false);
 
@@ -143,7 +152,11 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {activeTab === 'overview' ? (
           <>
             {/* Score Card */}
@@ -219,9 +232,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
                 style={styles.card}
                 activeOpacity={summary.longestEpisode ? 0.8 : 1}
                 disabled={!summary.longestEpisode}
-                onPress={() =>
-                  summary.longestEpisode && setTimelineFocus({ minute: summary.longestEpisode.peakMinute })
-                }
+                onPress={showLongestEpisode}
               >
                 <Text style={styles.sectionHeading}>{t('summaryTitle')}</Text>
                 <Text style={styles.summaryText}>{summary.sentences.join(' ')}</Text>
@@ -250,7 +261,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
             )}
 
             {/* Timeline */}
-            <View style={styles.card}>
+            <View style={styles.card} onLayout={(e) => (timelineY.current = e.nativeEvent.layout.y)}>
               <Text style={styles.sectionHeading}>{t('nightNoiseTimeline')}</Text>
               <Text style={styles.hintText}>{t('timelineHint')}</Text>
               <SnoreTimelineChart

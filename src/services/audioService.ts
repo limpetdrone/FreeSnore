@@ -19,6 +19,8 @@ export interface LiveAudioStatus {
   category: SnoreIntensity;
   durationSeconds: number;
   snoringSeconds: number;
+  paused: boolean;
+  pauseRemainingSeconds: number | null; // Until the pause ends on its own
 }
 
 export interface MonitoringOptions {
@@ -44,6 +46,9 @@ export interface MonitoringResult {
 }
 
 const FRAME_INTERVAL_MS = 250;
+
+// A pause (awake at night) ends on its own: a forgotten pause must not lose the rest of the night
+export const PAUSE_MAX_MS = 15 * 60 * 1000;
 
 // An alarm or call this early (e.g. during the fall-asleep delay) is not the morning:
 // keep the night going instead of saving a few minutes as a finished night
@@ -88,7 +93,10 @@ export class SleepMonitorService {
   private lastRecordingSeenAt: number = 0; // Last tick at which the recorder was still recording
   private interruptedAt: number | null = null;
   private lastResumeAttempt: number = 0;
-  private pauses: PauseInterval[] = [];
+  private pauses: PauseInterval[] = []; // Gaps in the audio file (interruptions)
+  private pausedAt: number | null = null; // The user paused monitoring (e.g. awake at night)
+  private pauseEndsAt: number | null = null;
+  private userPausedMs: number = 0; // Finished user pauses: not counted as sleep
   private monitorStartTime: number = 0; // Timestamp when snore classification begins (after delay)
   private lastEmitTime: number = 0;
   private currentDb: number = 30;
@@ -178,6 +186,9 @@ export class SleepMonitorService {
       this.lastRecordingSeenAt = this.recordingStartTime;
       this.interruptedAt = null;
       this.pauses = [];
+      this.pausedAt = null;
+      this.pauseEndsAt = null;
+      this.userPausedMs = 0;
       this.monitorStartTime = this.recordingStartTime + options.delaySeconds * 1000;
       this.lastEmitTime = 0;
       this.isRunning = true;
@@ -195,6 +206,14 @@ export class SleepMonitorService {
   private onFrameTick() {
     if (!this.isRunning || !this.recorder) return;
     const now = Date.now();
+    if (this.pausedAt !== null) {
+      if (this.pauseEndsAt !== null && now >= this.pauseEndsAt) {
+        this.resumeMonitoring();
+      } else {
+        this.emitStatus(now);
+        return;
+      }
+    }
     if (!this.checkRecorderRunning(now)) return;
     if (now < this.monitorStartTime) return;
 
@@ -205,17 +224,63 @@ export class SleepMonitorService {
       db = Math.max(30, Math.min(95, Math.round(metering + 95)));
     }
     this.processAudioFrame(db, now);
+    this.emitStatus(now);
+  }
 
-    if (this.onStatusCallback && now - this.lastEmitTime >= 1000) {
-      this.lastEmitTime = now;
-      this.onStatusCallback({
-        currentDb: this.currentDb,
-        peakDb: this.peakDb,
-        category: this.classifyDb(this.currentDb),
-        durationSeconds: this.elapsedSeconds(now),
-        snoringSeconds: this.snoringSeconds,
-      });
-    }
+  private emitStatus(now: number) {
+    if (!this.onStatusCallback || now - this.lastEmitTime < 1000) return;
+    this.lastEmitTime = now;
+    this.onStatusCallback({
+      currentDb: this.currentDb,
+      peakDb: this.peakDb,
+      category: this.classifyDb(this.currentDb),
+      durationSeconds: this.elapsedSeconds(now),
+      snoringSeconds: this.snoringSeconds,
+      paused: this.pausedAt !== null,
+      pauseRemainingSeconds:
+        this.pauseEndsAt !== null ? Math.max(0, Math.ceil((this.pauseEndsAt - now) / 1000)) : null,
+    });
+  }
+
+  get paused(): boolean {
+    return this.pausedAt !== null;
+  }
+
+  /**
+   * Pauses the analysis, e.g. while the user is awake at night, for at most PAUSE_MAX_MS.
+   * The recorder keeps running: on iOS a stopped recorder lets the app be suspended in the
+   * background, and nothing could then resume the night. The paused time has no timeline
+   * data and does not count as sleep.
+   */
+  pauseMonitoring(): boolean {
+    const now = Date.now();
+    // Only after the fall-asleep delay: before it nothing is analysed anyway
+    if (!this.isRunning || this.pausedAt !== null || now < this.monitorStartTime) return false;
+    this.pausedAt = now;
+    this.pauseEndsAt = now + PAUSE_MAX_MS;
+    this.lastEmitTime = 0;
+    this.emitStatus(now);
+    return true;
+  }
+
+  resumeMonitoring(): boolean {
+    if (!this.isRunning || this.pausedAt === null) return false;
+    const now = Date.now();
+    // A late tick (app in the background) does not stretch the pause beyond its limit
+    this.userPausedMs += Math.min(now - this.pausedAt, PAUSE_MAX_MS);
+    this.pausedAt = null;
+    this.pauseEndsAt = null;
+    // Breaths before the pause are no rhythm reference for the ones after it
+    snoreClassifier.reset();
+    this.lastEmitTime = 0;
+    this.emitStatus(now);
+    return true;
+  }
+
+  /** The night so far, for viewing the timeline while monitoring (no replay: the file is open). */
+  getLiveTimeline(): TimelineSample[] {
+    if (!this.isRunning || Date.now() < this.monitorStartTime) return [];
+    return buildTimeline(this.minuteBuckets, this.monitorStartTime, false);
   }
 
   /**
@@ -261,8 +326,10 @@ export class SleepMonitorService {
     return this.isRunning && atMs - this.monitorStartTime >= AUTO_STOP_MIN_MONITORING_MS;
   }
 
+  /** Monitored time without the user's pauses */
   private elapsedSeconds(now: number): number {
-    return Math.max(0, Math.floor((now - this.monitorStartTime) / 1000));
+    const paused = this.userPausedMs + (this.pausedAt !== null ? Math.min(now - this.pausedAt, PAUSE_MAX_MS) : 0);
+    return Math.max(0, Math.floor((now - this.monitorStartTime - paused) / 1000));
   }
 
   private classifyDb(db: number): SnoreIntensity {
@@ -394,7 +461,9 @@ export class SleepMonitorService {
     const now = this.interruptedAt ?? Date.now();
     // If stopped during delay, monitoring was active for 0 seconds
     const startTime = Math.min(this.monitorStartTime, now);
-    const totalSeconds = Math.max(1, Math.floor((now - startTime) / 1000));
+    const totalSeconds = Math.max(1, this.elapsedSeconds(now));
+    this.pausedAt = null;
+    this.pauseEndsAt = null;
 
     const keepAudio =
       this.options.saveAudio && (this.snoringMs > 0 || !!this.options.keepFullRecording);

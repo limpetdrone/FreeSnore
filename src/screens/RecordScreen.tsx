@@ -16,9 +16,10 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Brightness from 'expo-brightness';
 import * as Haptics from 'expo-haptics';
 import { sleepMonitor, LiveAudioStatus } from '../services/audioService';
+import { SnoreTimelineChart } from '../components/SnoreTimelineChart';
 import { calculateSnoreStats } from '../services/scoreCalculator';
 import { saveSession, getSettings, DEFAULT_SETTINGS } from '../services/storage';
-import { SleepSession, AppSettings } from '../types/session';
+import { SleepSession, AppSettings, TimelineSample } from '../types/session';
 import { COLORS, SNORE_LEVELS } from '../constants/theme';
 import {
   showTrackingNotification,
@@ -35,6 +36,7 @@ interface RecordScreenProps {
 
 const DELAY_OPTIONS = [0, 5, 10, 15, 20, 30, 45];
 const AUTO_NIGHT_CLOCK_MS = 30000;
+const LIVE_TIMELINE_REFRESH_MS = 30000;
 
 const AGGRAVATING_KEYS = [
   'factorBackSleep',
@@ -84,7 +86,12 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     category: 'quiet',
     durationSeconds: 0,
     snoringSeconds: 0,
+    paused: false,
+    pauseRemainingSeconds: null,
   });
+  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
+  const [liveTimeline, setLiveTimeline] = useState<TimelineSample[]>([]);
 
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -151,6 +158,25 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     };
   }, [nightClockMode]);
 
+  // The night so far, refreshed while the recording screen is visible (e.g. awake at night)
+  useEffect(() => {
+    if (trackingState !== 'recording' || nightClockMode) return;
+    const refresh = () => setLiveTimeline(sleepMonitor.getLiveTimeline());
+    refresh();
+    const timer = setInterval(refresh, LIVE_TIMELINE_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [trackingState, nightClockMode, isPaused]);
+
+  const togglePause = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // The status callback updates isPaused right away
+    if (isPaused) {
+      sleepMonitor.resumeMonitoring();
+    } else if (sleepMonitor.pauseMonitoring()) {
+      showTrackingNotification(t('monitoringPaused'), t('monitoringPausedHint'));
+    }
+  };
+
   // Switch to the dark night clock after a short time without touches while
   // recording: a lit, constantly re-rendering screen is the biggest drain all night.
   const scheduleAutoNightClock = () => {
@@ -193,6 +219,8 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
 
   const enterRecordingState = () => {
     clearCountdownTimer();
+    isPausedRef.current = false;
+    setIsPaused(false);
     setTrackingState('recording');
     showTrackingNotification(t('nightClockMonitoring'), t('monitoringActive'));
   };
@@ -208,6 +236,12 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
     const started = await sleepMonitor.startMonitoring(
       (status) => {
         lastStatusRef.current = status;
+        // The pause ends on its own after PAUSE_MAX_MS
+        if (status.paused !== isPausedRef.current) {
+          isPausedRef.current = status.paused;
+          setIsPaused(status.paused);
+          if (!status.paused) showTrackingNotification(t('nightClockMonitoring'), t('monitoringActive'));
+        }
         // No re-render while locked or while the night clock (which ticks per minute) is shown
         if (isAppActiveRef.current && !nightClockModeRef.current) {
           setLiveStatus(status);
@@ -380,7 +414,9 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
             </Text>
           ) : (
             <>
-              <Text style={styles.nightClockStatus}>{t('nightClockMonitoring')}</Text>
+              <Text style={styles.nightClockStatus}>
+                {isPaused ? t('monitoringPaused') : t('nightClockMonitoring')}
+              </Text>
               <Text style={styles.nightClockElapsed}>
                 {t('nightClockElapsed')}: {formatHoursMinutes(liveStatus.durationSeconds)}
               </Text>
@@ -435,12 +471,14 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
       <View style={styles.container} onTouchStart={scheduleAutoNightClock}>
         <ScrollView contentContainerStyle={styles.recordingScroll}>
           <View style={styles.recordingHeader}>
-            <View style={styles.recordingDot} />
-            <Text style={styles.recordingStatusText}>{t('monitoringActive')}</Text>
+            <View style={[styles.recordingDot, isPaused && styles.recordingDotPaused]} />
+            <Text style={styles.recordingStatusText}>
+              {isPaused ? t('monitoringPaused') : t('monitoringActive')}
+            </Text>
           </View>
 
           {/* Live Sound Meter Card */}
-          <View style={styles.meterCard}>
+          <View style={[styles.meterCard, isPaused && styles.dimmed]}>
             <View
               style={[
                 styles.dbCircle,
@@ -505,14 +543,45 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
             </View>
           </View>
 
-          {/* Night mode button */}
-          <TouchableOpacity
-            style={styles.nightModeBtn}
-            onPress={() => setNightClockMode(true)}
-          >
-            <Ionicons name="moon-outline" size={20} color={COLORS.textSecondary} />
-            <Text style={styles.nightModeBtnText}>{t('nightClockModeBtn')}</Text>
-          </TouchableOpacity>
+          {/* The night so far */}
+          <View style={styles.liveTimelineCard}>
+            <Text style={styles.liveTimelineTitle}>{t('liveTimelineTitle')}</Text>
+            <SnoreTimelineChart timeline={liveTimeline} height={110} />
+          </View>
+
+          {/* Pause (awake at night) and night mode */}
+          <View style={styles.secondaryActions}>
+            <TouchableOpacity
+              style={[styles.nightModeBtn, styles.secondaryActionBtn, isPaused && styles.resumeBtn]}
+              onPress={togglePause}
+            >
+              <Ionicons
+                name={isPaused ? 'play' : 'pause'}
+                size={20}
+                color={isPaused ? '#FFFFFF' : COLORS.textSecondary}
+              />
+              <Text style={[styles.nightModeBtnText, isPaused && styles.resumeBtnText]}>
+                {isPaused ? t('resumeMonitoringBtn') : t('pauseMonitoringBtn')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.nightModeBtn, styles.secondaryActionBtn]}
+              onPress={() => setNightClockMode(true)}
+            >
+              <Ionicons name="moon-outline" size={20} color={COLORS.textSecondary} />
+              <Text style={styles.nightModeBtnText}>{t('nightClockModeBtn')}</Text>
+            </TouchableOpacity>
+          </View>
+          {isPaused && (
+            <Text style={styles.pausedHint}>
+              {liveStatus.pauseRemainingSeconds !== null
+                ? `${t('monitoringResumesIn', {
+                    minutes: Math.max(1, Math.ceil(liveStatus.pauseRemainingSeconds / 60)),
+                  })} `
+                : ''}
+              {t('monitoringPausedHint')}
+            </Text>
+          )}
 
           {/* Stop session button */}
           <TouchableOpacity
@@ -1013,6 +1082,49 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: COLORS.error,
+  },
+  recordingDotPaused: {
+    backgroundColor: COLORS.light,
+  },
+  dimmed: {
+    opacity: 0.4,
+  },
+  liveTimelineCard: {
+    backgroundColor: COLORS.surfaceCard,
+    width: '100%',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+    marginBottom: 16,
+  },
+  liveTimelineTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  secondaryActions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  secondaryActionBtn: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  resumeBtn: {
+    backgroundColor: COLORS.primary,
+  },
+  resumeBtnText: {
+    color: '#FFFFFF',
+  },
+  pausedHint: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: -8,
+    marginBottom: 16,
+    paddingHorizontal: 8,
   },
   recordingStatusText: {
     color: COLORS.textSecondary,

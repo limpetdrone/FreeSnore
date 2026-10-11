@@ -12,6 +12,7 @@ import { WeeklyChart } from '../components/WeeklyChart';
 import { MonthlyChart } from '../components/MonthlyChart';
 import { snoringTimeSeconds } from '../services/timeline';
 import { PeriodReportPanel } from '../components/PeriodReportPanel';
+import { PeriodSummaryCard } from '../components/PeriodSummaryCard';
 import { COLORS } from '../constants/theme';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
@@ -164,6 +165,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         {viewMode === 'weekly' && (
           <View>
             <WeeklyChart sessions={sessions} />
+            <PeriodSummaryCard sessions={sessions} days={7} title={t('weekSummaryTitle')} />
 
             <Text style={[styles.sectionHeader, { marginTop: 16 }]}>
               {t('weekNightsList')}
@@ -175,6 +177,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         {viewMode === 'monthly' && (
           <View>
             <MonthlyChart sessions={sessions} />
+            <PeriodSummaryCard sessions={sessions} days={30} title={t('monthSummaryTitle')} />
 
             <Text style={[styles.sectionHeader, { marginTop: 16 }]}>
               {t('recordedNights', { count: sessions.length })}
