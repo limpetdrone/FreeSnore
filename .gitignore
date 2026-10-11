@@ -42,3 +42,5 @@ yarn-error.*
 
 # Downloaded test audio (npm run fetch-snore-audio)
 scripts/audio-fixtures/downloads/
+# Real nights for the regression check (private recordings, never committed)
+scripts/audio-fixtures/private/

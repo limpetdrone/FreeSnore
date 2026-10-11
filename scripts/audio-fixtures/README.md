@@ -34,3 +34,16 @@ npm run analyze-audio -- --fan 48 snore.mp3@60 talk.m4a@55
 
 `file@60` scales that file so its loudest moments reach 60 dB on the app's scale; `--raw` keeps the
 original levels (use it for the app's own recordings, which already have realistic levels).
+
+## Real-night regression check
+
+`night-regression.json` holds the expected detector results for whole nights recorded by the
+app (snore count range, snoring or silence per time window, e.g. trams passing outside).
+The recordings themselves are private and never committed: put them into
+`scripts/audio-fixtures/private/` (gitignored) and run
+
+```bash
+npm run analyze-audio -- --regress
+```
+
+Nights whose recording is missing are skipped. Run it after every detector change.

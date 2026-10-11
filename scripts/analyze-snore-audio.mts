@@ -16,9 +16,11 @@
  *   --envelope          Print the loudness envelope, one line per second.
  *   --batch <dir>       Analyze every audio file in a folder separately and print a table.
  *   --demo              Run the built-in scenarios on scripts/audio-fixtures.
+ *   --regress           Check real nights against scripts/audio-fixtures/night-regression.json
+ *                       (recordings in scripts/audio-fixtures/private/, not in git).
  */
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -265,10 +267,84 @@ function runBatch(dir: string, raw: boolean, fan: number | null, sensitivity: Se
   console.log(`\n${files.length} files, ${(totalSeconds / 60).toFixed(1)} min, ${totalEvents} snores`);
 }
 
+interface RegressionWindow {
+  from: string; // Wall-clock HH:MM
+  to: string;
+  minSnoreSeconds?: number;
+  maxSnoreSeconds?: number;
+  note: string;
+}
+
+interface RegressionNight {
+  file: string;
+  recordingStart: string; // Wall-clock time of the first sample
+  delayMinutes: number; // Fall-asleep delay: the app analyses nothing before it
+  sensitivity: Sensitivity;
+  snores: [number, number]; // Allowed range of the snore count
+  windows: RegressionWindow[];
+}
+
+const clockMinutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+};
+
+/** Real nights against their expected results; exit code 1 on any failure. */
+function runRegression() {
+  const spec: { nights: RegressionNight[] } = JSON.parse(
+    readFileSync(join(FIXTURES, 'night-regression.json'), 'utf8')
+  );
+  let failures = 0;
+  let checked = 0;
+  for (const night of spec.nights) {
+    const path = join(FIXTURES, 'private', night.file);
+    if (!existsSync(path)) {
+      console.log(`\n${night.file}: SKIPPED (not in scripts/audio-fixtures/private/)`);
+      continue;
+    }
+    checked++;
+    const samples = decode(path);
+    // Like the app: analysis starts after the delay, with a fresh classifier
+    const skip = night.delayMinutes * 60 * SAMPLE_RATE;
+    const a = analyze(samples.subarray(skip), night.sensitivity);
+    const startClock = clockMinutes(night.recordingStart) + night.delayMinutes;
+    // Seconds since analysis start of a wall-clock time (nights cross midnight)
+    const offsetOf = (hhmm: string) => ((((clockMinutes(hhmm) - startClock) % 1440) + 1440) % 1440) * 60;
+
+    const lines: string[] = [];
+    const check = (ok: boolean, text: string) => {
+      if (!ok) failures++;
+      lines.push(`  ${ok ? 'ok  ' : 'FAIL'} ${text}`);
+    };
+    const [minSnores, maxSnores] = night.snores;
+    check(
+      a.events.length >= minSnores && a.events.length <= maxSnores,
+      `${a.events.length} snores (expected ${minSnores}-${maxSnores})`
+    );
+    for (const w of night.windows) {
+      const from = offsetOf(w.from);
+      const to = offsetOf(w.to);
+      const seconds = Math.round(
+        a.events.filter((e) => e.startSec >= from && e.startSec < to).reduce((n, e) => n + e.durationMs, 0) / 1000
+      );
+      const ok = seconds >= (w.minSnoreSeconds ?? 0) && seconds <= (w.maxSnoreSeconds ?? Infinity);
+      const range =
+        w.maxSnoreSeconds !== undefined ? `<= ${w.maxSnoreSeconds} s` : `>= ${w.minSnoreSeconds ?? 0} s`;
+      check(ok, `${w.from}-${w.to} ${seconds} s snoring (expected ${range}): ${w.note}`);
+    }
+    console.log(`\n${night.file}`);
+    lines.forEach((l) => console.log(l));
+  }
+  console.log(failures ? `\n${failures} check(s) failed` : `\n${checked} night(s) passed`);
+  process.exit(failures ? 1 : 0);
+}
+
 // --- CLI ---
 const args = process.argv.slice(2);
 if (args.includes('--demo')) {
   runDemo();
+} else if (args.includes('--regress')) {
+  runRegression();
 } else {
   let raw = false;
   let fan: number | null = null;
