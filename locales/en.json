@@ -1,5 +1,7 @@
 {
-  "NSMicrophoneUsageDescription": "FreeSnore uses the microphone to detect and analyse snoring while you sleep.",
-  "NSLocationWhenInUseUsageDescription": "FreeSnore uses your approximate location (about 10 km) to fetch pollen and weather data for your area and compare them with your snoring. Your location is not stored.",
-  "NSHealthShareUsageDescription": "FreeSnore reads data from your watch and scales (heart rate, blood oxygen, sleep stages, weight) to compare it with your snoring. It writes nothing to Health."
+  "ios": {
+    "NSMicrophoneUsageDescription": "FreeSnore uses the microphone to detect and analyse snoring while you sleep.",
+    "NSLocationWhenInUseUsageDescription": "FreeSnore uses your approximate location (about 10 km) to fetch pollen and weather data for your area and compare them with your snoring. Your location is not stored.",
+    "NSHealthShareUsageDescription": "FreeSnore reads data from your watch and scales (heart rate, blood oxygen, sleep stages, weight) to compare it with your snoring. It writes nothing to Health."
+  }
 }
