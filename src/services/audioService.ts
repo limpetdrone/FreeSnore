@@ -292,10 +292,12 @@ export class SleepMonitorService {
 
   private registerSnore(event: SnoreEventCandidate) {
     this.snoringMs += event.durationMs;
-    this.snoringSeconds = Math.round(this.snoringMs / 1000);
 
     const offsetSeconds = audioFileOffsetSeconds(event.startTime, this.recordingStartTime, this.pauses);
     const bucket = this.bucketAt(event.startTime);
+    // Snoring time counts whole minutes with snoring (breaths between snores included),
+    // the same way the timeline, the score and the saved night count it
+    if (bucket.snoreEvents === 0) this.snoringSeconds += 60;
     bucket.snoreMs += event.durationMs;
     bucket.snorePeakSum += event.peakDb;
     bucket.snoreEvents += 1;

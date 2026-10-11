@@ -19,6 +19,7 @@ export interface TimelineSample {
   // Detector results (missing on sessions recorded before snore-based timelines)
   snoreSeconds?: number;
   snoreDb?: number; // Average peak loudness of the snores in this minute
+  snoreCount?: number; // Number of snores in this minute (missing on older sessions)
   audioOffsetSeconds?: number; // Position of the loudest snore of this minute in the night's audio file
 }
 
@@ -28,7 +29,7 @@ export interface SleepSession {
   endTime: string; // ISO string
   delayMinutes: number; // Configured start delay
   totalDurationSeconds: number; // In seconds
-  snoreDurationSeconds: number; // Seconds spent snoring
+  snoreDurationSeconds: number; // Minutes with snoring, in seconds (older sessions: sum of snore sounds; use snoringTimeSeconds())
   snoreScore: number; // SnoreLab-like composite score (0 - 150+)
   quietPercent: number; // Percentage of quiet sleep
   lightPercent: number; // Percentage of light snoring

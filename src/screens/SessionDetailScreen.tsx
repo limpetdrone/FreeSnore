@@ -15,9 +15,11 @@ import { SnoreTimelineChart } from '../components/SnoreTimelineChart';
 import { ClipPlayer } from '../components/ClipPlayer';
 import { COLORS } from '../constants/theme';
 import { deleteSession } from '../services/storage';
-import { createPdfReportFile, sharePdfReportFile } from '../services/pdfReportGenerator';
+import { buildPdfReportHtml } from '../services/pdfReportGenerator';
+import { usePdfReport } from '../hooks/usePdfReport';
 import { PdfPreviewModal } from '../components/PdfPreviewModal';
-import { summarizeNight } from '../services/nightSummary';
+import { REFERENCES, summarizeNight } from '../services/nightSummary';
+import { snoringTimeSeconds } from '../services/timeline';
 import { exportNightRecording, nightRecordingSize } from '../services/recordingExport';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
@@ -56,10 +58,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
     else if (result === 'error') Alert.alert(t('appTitle'), t('exportRecordingError'));
   };
   const [activeTab, setActiveTab] = useState<'overview' | 'clips'>('overview');
-  const [showPdfPreview, setShowPdfPreview] = useState(false);
-  const [pdfUri, setPdfUri] = useState<string | null>(null);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [isSharingPdf, setIsSharingPdf] = useState(false);
+  const report = usePdfReport();
 
   const startDate = new Date(session.startTime);
   const endDate = new Date(session.endTime);
@@ -95,35 +94,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
     );
   };
 
-  const handleOpenPdfPreview = async () => {
-    setShowPdfPreview(true);
-    if (!pdfUri) {
-      setIsGeneratingPdf(true);
-      const result = await createPdfReportFile(session);
-      if (result) {
-        setPdfUri(result.uri);
-      }
-      setIsGeneratingPdf(false);
-    }
-  };
-
-  const handleShareFromPreview = async () => {
-    if (!pdfUri) {
-      setIsGeneratingPdf(true);
-      const result = await createPdfReportFile(session);
-      setIsGeneratingPdf(false);
-      if (result) {
-        setPdfUri(result.uri);
-        setIsSharingPdf(true);
-        await sharePdfReportFile(result.uri);
-        setIsSharingPdf(false);
-      }
-    } else {
-      setIsSharingPdf(true);
-      await sharePdfReportFile(pdfUri);
-      setIsSharingPdf(false);
-    }
-  };
+  const handleOpenPdfPreview = () => report.open(buildPdfReportHtml(session));
 
   return (
     <View style={styles.container}>
@@ -190,7 +161,7 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
                 <View style={styles.statBox}>
                   <Text style={styles.statLabel}>{t('snoreDuration')}</Text>
                   <Text style={[styles.statValue, { color: COLORS.loud }]}>
-                    {formatHoursMinutes(session.snoreDurationSeconds)}
+                    {formatHoursMinutes(snoringTimeSeconds(session))}
                   </Text>
                 </View>
 
@@ -258,6 +229,24 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
                   <Text style={[styles.hintText, styles.summaryHint]}>{t('summaryJumpHint')}</Text>
                 )}
               </TouchableOpacity>
+            )}
+
+            {/* What the pattern may mean, with sources */}
+            {summary && summary.insights.length > 0 && (
+              <View style={styles.card}>
+                <Text style={styles.sectionHeading}>{t('insightTitle')}</Text>
+                {summary.insights.map((insight, i) => (
+                  <Text key={i} style={[styles.summaryText, i > 0 && styles.insightGap]}>
+                    {insight}
+                  </Text>
+                ))}
+                <Text style={[styles.referencesHeading]}>{t('referencesTitle')}</Text>
+                {summary.references.map((n) => (
+                  <Text key={n} style={styles.referenceText}>
+                    [{n}] {REFERENCES[n]}
+                  </Text>
+                ))}
+              </View>
             )}
 
             {/* Timeline */}
@@ -335,13 +324,11 @@ export const SessionDetailScreen: React.FC<SessionDetailScreenProps> = ({
 
       {/* PDF Report Preview & Share Modal */}
       <PdfPreviewModal
-        visible={showPdfPreview}
-        session={session}
-        pdfUri={pdfUri}
-        isLoading={isGeneratingPdf}
-        isSharing={isSharingPdf}
-        onClose={() => setShowPdfPreview(false)}
-        onShare={handleShareFromPreview}
+        visible={report.visible}
+        html={report.html}
+        isSharing={report.isSharing}
+        onClose={report.close}
+        onShare={report.share}
       />
     </View>
   );
@@ -462,6 +449,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: COLORS.textSecondary,
+  },
+  insightGap: {
+    marginTop: 8,
+  },
+  referencesHeading: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  referenceText: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 2,
   },
   summaryHint: {
     marginTop: 8,

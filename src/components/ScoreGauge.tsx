@@ -56,9 +56,12 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
         />
       </Svg>
 
-      <View style={styles.centerContent}>
+      {/* Kept inside the ring: long labels (e.g. Hungarian) wrap instead of crossing it */}
+      <View style={[styles.centerContent, { maxWidth: (size - 2 * strokeWidth) * 0.8 }]}>
         <Text style={[styles.scoreText, { color: scoreColor }]}>{score}</Text>
-        <Text style={styles.labelText}>{label}</Text>
+        <Text style={styles.labelText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+          {label}
+        </Text>
         {sublabel && <Text style={styles.sublabelText}>{sublabel}</Text>}
       </View>
     </View>
@@ -87,6 +90,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    lineHeight: 14,
+    textAlign: 'center',
     marginTop: 2,
   },
   sublabelText: {

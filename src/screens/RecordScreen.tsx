@@ -299,7 +299,7 @@ export const RecordScreen: React.FC<RecordScreenProps> = ({ onSessionFinished, o
       endTime: new Date(result.endTime).toISOString(),
       delayMinutes: selectedDelay,
       totalDurationSeconds: result.totalSeconds,
-      // Total snoring duration detected (matches live display)
+      // Minutes with snoring (matches the live display and the timeline)
       snoreDurationSeconds: Math.min(result.snoreSeconds, result.totalSeconds),
       snoreScore: stats.snoreScore,
       quietPercent: stats.quietPercent,

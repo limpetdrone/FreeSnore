@@ -10,6 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SleepSession } from '../types/session';
 import { WeeklyChart } from '../components/WeeklyChart';
 import { MonthlyChart } from '../components/MonthlyChart';
+import { snoringTimeSeconds } from '../services/timeline';
+import { PeriodReportPanel } from '../components/PeriodReportPanel';
 import { COLORS } from '../constants/theme';
 import { t, getLanguage, tFactor, formatHoursMinutes } from '../i18n';
 
@@ -65,7 +67,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             <View style={styles.detailItem}>
               <Ionicons name="volume-medium-outline" size={13} color={COLORS.loud} />
               <Text style={[styles.detailText, { color: COLORS.loud }]}>
-                {formatHoursMinutes(item.snoreDurationSeconds)} {t('snoreLabel')}
+                {formatHoursMinutes(snoringTimeSeconds(item))} {t('snoreLabel')}
               </Text>
             </View>
           </View>
@@ -138,6 +140,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {sessions.length > 0 && <PeriodReportPanel sessions={sessions} />}
+
         {viewMode === 'daily' && (
           <View>
             <View style={styles.listHeaderRow}>
